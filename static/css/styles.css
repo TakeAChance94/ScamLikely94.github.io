@@ -20,12 +20,19 @@ body {
   overflow-x: hidden;
 }
 
-.bg {
+.bg-video {
   position: fixed;
   inset: 0;
-  background: radial-gradient(ellipse at 20% 20%, #1a1a2e 0%, transparent 50%),
-              radial-gradient(ellipse at 80% 80%, #16213e 0%, transparent 50%),
-              var(--bg);
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -2;
+}
+
+.bg-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 15, 0.65);
   z-index: -1;
 }
 
