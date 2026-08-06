@@ -60,6 +60,14 @@ document.addEventListener('DOMContentLoaded', () => {
     output.scrollTop = output.scrollHeight;
   }
 
+  function printHTML(html) {
+    const div = document.createElement('div');
+    div.className = 'line';
+    div.innerHTML = html;
+    output.appendChild(div);
+    output.scrollTop = output.scrollHeight;
+  }
+
   function updatePrompt() {
     promptText.textContent = `visitor@site:${cwd}$`;
   }
@@ -104,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
         input.value = parts.join(' ') + (completions[0].endsWith('.txt') ? '' : ' ');
       }
     } else if (completions.length > 1) {
-      print(`${promptText.textContent} ${val}`, 'cmd');
+      printHTML(`<span class="prompt">${promptText.textContent}</span> <span class="cmd">${val}</span>`);
       print(completions.join('  '), 'info');
     }
   }
@@ -113,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const cmd = raw.trim();
     if (!cmd) return;
 
-    print(`${promptText.textContent} ${raw}`, 'cmd');
+    printHTML(`<span class="prompt">${promptText.textContent}</span> <span class="cmd">${raw}</span>`);
 
     const parts = cmd.split(/\s+/);
     const base = parts[0].toLowerCase();
