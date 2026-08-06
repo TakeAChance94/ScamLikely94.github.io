@@ -1,179 +1,219 @@
 (function () {
   if (typeof THREE === 'undefined') {
-    document.getElementById('hint').textContent = 'Failed to load Three.js – check console';
+    document.getElementById('hint').textContent = 'Failed to load Three.js';
     return;
   }
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x87b8d8);
-  scene.fog = new THREE.Fog(0x87b8d8, 40, 80);
+  scene.background = new THREE.Color(0x9ec8e8);
+  scene.fog = new THREE.Fog(0x9ec8e8, 35, 70);
 
-  const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 200);
-  camera.position.set(0, 8, 18);
+  const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 200);
+  camera.position.set(0, 7, 16);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(innerWidth, innerHeight);
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
   document.body.appendChild(renderer.domElement);
 
   // Lights
-  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-  const sun = new THREE.DirectionalLight(0xfff4e0, 1.1);
-  sun.position.set(20, 30, 15);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.45));
+  const sun = new THREE.DirectionalLight(0xfff5e6, 1.35);
+  sun.position.set(15, 25, 10);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.near = 1;
+  sun.shadow.camera.far = 60;
+  sun.shadow.camera.left = -20;
+  sun.shadow.camera.right = 20;
+  sun.shadow.camera.top = 20;
+  sun.shadow.camera.bottom = -20;
+  sun.shadow.bias = -0.0005;
   scene.add(sun);
 
-  // Ground – cul-de-sac shape (large plane + circle)
-  const groundMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.9 });
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(40, 30), groundMat);
+  // Soft fill
+  const fill = new THREE.DirectionalLight(0xb0d0ff, 0.35);
+  fill.position.set(-10, 8, -5);
+  scene.add(fill);
+
+  // Ground
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(50, 40),
+    new THREE.MeshStandardMaterial({ color: 0x7a7a7a, roughness: 0.95 })
+  );
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
   scene.add(ground);
 
-  // Circle at end of cul-de-sac
+  // Cul-de-sac circle
   const circle = new THREE.Mesh(
-    new THREE.CircleGeometry(8, 32),
-    new THREE.MeshStandardMaterial({ color: 0x777777 })
+    new THREE.CircleGeometry(7.5, 48),
+    new THREE.MeshStandardMaterial({ color: 0x6e6e6e })
   );
   circle.rotation.x = -Math.PI / 2;
-  circle.position.set(0, 0.01, -6);
+  circle.position.set(0, 0.02, -7);
   circle.receiveShadow = true;
   scene.add(circle);
 
-  // Grass borders
-  const grassMat = new THREE.MeshStandardMaterial({ color: 0x5a9e3a });
-  [[-12, 0, 0], [12, 0, 0], [0, 0, -14]].forEach(p => {
-    const g = new THREE.Mesh(new THREE.BoxGeometry(8, 0.2, 12), grassMat);
-    g.position.set(...p);
+  // Road center line
+  const lineMat = new THREE.MeshBasicMaterial({ color: 0xf0f0f0 });
+  for (let z = 8; z > -2; z -= 2.2) {
+    const dash = new THREE.Mesh(new THREE.PlaneGeometry(0.25, 1.2), lineMat);
+    dash.rotation.x = -Math.PI / 2;
+    dash.position.set(0, 0.03, z);
+    scene.add(dash);
+  }
+
+  // Grass strips
+  const grassMat = new THREE.MeshStandardMaterial({ color: 0x5aae45, roughness: 0.9 });
+  [[-11, 0, -2], [11, 0, -2], [0, 0, -15]].forEach(([x, y, z]) => {
+    const g = new THREE.Mesh(new THREE.BoxGeometry(10, 0.15, 14), grassMat);
+    g.position.set(x, y, z);
     g.receiveShadow = true;
     scene.add(g);
   });
 
+  // Simple trees
+  function addTree(x, z) {
+    const trunk = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.25, 0.35, 1.6, 8),
+      new THREE.MeshStandardMaterial({ color: 0x5c3a21 })
+    );
+    trunk.position.set(x, 0.8, z);
+    trunk.castShadow = true;
+    scene.add(trunk);
+    const leaves = new THREE.Mesh(
+      new THREE.SphereGeometry(1.4, 10, 10),
+      new THREE.MeshStandardMaterial({ color: 0x3d8b37 })
+    );
+    leaves.position.set(x, 2.4, z);
+    leaves.castShadow = true;
+    scene.add(leaves);
+  }
+  [[-13, 2], [-12, -12], [12, 3], [13, -11], [-8, -16], [8, -16]].forEach(([x, z]) => addTree(x, z));
+
   // Unique houses
   const houses = [];
-  function makeHouse(x, z, color, roofColor, name, scale = 1) {
+  function makeHouse(x, z, bodyColor, roofColor, name, w = 4.2, d = 4.2) {
     const group = new THREE.Group();
     const body = new THREE.Mesh(
-      new THREE.BoxGeometry(4 * scale, 3 * scale, 4 * scale),
-      new THREE.MeshStandardMaterial({ color })
+      new THREE.BoxGeometry(w, 3.2, d),
+      new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.7 })
     );
-    body.position.y = 1.5 * scale;
+    body.position.y = 1.6;
     body.castShadow = true;
+    body.receiveShadow = true;
     group.add(body);
 
     const roof = new THREE.Mesh(
-      new THREE.ConeGeometry(3.2 * scale, 2 * scale, 4),
-      new THREE.MeshStandardMaterial({ color: roofColor })
+      new THREE.ConeGeometry(Math.max(w, d) * 0.78, 2.2, 4),
+      new THREE.MeshStandardMaterial({ color: roofColor, roughness: 0.85 })
     );
-    roof.position.y = 4 * scale;
+    roof.position.y = 4.3;
     roof.rotation.y = Math.PI / 4;
     roof.castShadow = true;
     group.add(roof);
 
     // Door
     const door = new THREE.Mesh(
-      new THREE.BoxGeometry(1 * scale, 1.8 * scale, 0.15),
-      new THREE.MeshStandardMaterial({ color: 0x4a3728 })
+      new THREE.BoxGeometry(1.1, 2.0, 0.12),
+      new THREE.MeshStandardMaterial({ color: 0x3e2a1a })
     );
-    door.position.set(0, 0.9 * scale, 2.05 * scale);
+    door.position.set(0, 1.0, d / 2 + 0.05);
     group.add(door);
 
     // Windows
-    const winMat = new THREE.MeshStandardMaterial({ color: 0xaaddff });
-    [-1.2, 1.2].forEach(wx => {
-      const w = new THREE.Mesh(new THREE.BoxGeometry(0.8 * scale, 0.8 * scale, 0.1), winMat);
-      w.position.set(wx * scale, 2 * scale, 2.05 * scale);
-      group.add(w);
+    const winMat = new THREE.MeshStandardMaterial({ color: 0xc8e8ff, emissive: 0x224466, emissiveIntensity: 0.15 });
+    [-1.3, 1.3].forEach(wx => {
+      const win = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.9, 0.08), winMat);
+      win.position.set(wx, 2.2, d / 2 + 0.05);
+      group.add(win);
     });
+
+    // Chimney
+    const chim = new THREE.Mesh(
+      new THREE.BoxGeometry(0.5, 1.2, 0.5),
+      new THREE.MeshStandardMaterial({ color: 0x555555 })
+    );
+    chim.position.set(w * 0.3, 4.8, -d * 0.2);
+    group.add(chim);
 
     group.position.set(x, 0, z);
     group.userData = { name };
     scene.add(group);
     houses.push(group);
-    return group;
   }
 
-  makeHouse(-9, -4, 0x6b9bd1, 0x8b4513, 'skills', 1.1);   // blue
-  makeHouse(0, -10, 0xe8a87c, 0x5c4033, 'hobbies', 1.0);  // orange
-  makeHouse(9, -4, 0x8fbc8f, 0x654321, 'contact', 1.15);  // green
+  makeHouse(-9.5, -5, 0x6b9ed4, 0x8b4513, 'skills', 4.5, 4.0);
+  makeHouse(0, -11.5, 0xe8a06c, 0x5c3a2a, 'hobbies', 4.0, 4.5);
+  makeHouse(9.5, -5, 0x7cbc7c, 0x4a3728, 'contact', 4.3, 4.2);
 
-  // Better character with arms & legs
+  // Character with arms & legs
   const player = new THREE.Group();
-  const skin = 0xf0c8b0;
-  const clothes = 0x3d2b1f;
+  const skinMat = new THREE.MeshStandardMaterial({ color: 0xf2c9b0 });
+  const clothMat = new THREE.MeshStandardMaterial({ color: 0x2c2118 });
+  const hairMat = new THREE.MeshStandardMaterial({ color: 0x1f120a });
 
   // Torso
-  const torso = new THREE.Mesh(
-    new THREE.BoxGeometry(0.7, 1.0, 0.4),
-    new THREE.MeshStandardMaterial({ color: clothes })
-  );
-  torso.position.y = 1.3;
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.75, 1.05, 0.42), clothMat);
+  torso.position.y = 1.35;
   torso.castShadow = true;
   player.add(torso);
 
   // Head
-  const head = new THREE.Mesh(
-    new THREE.SphereGeometry(0.32, 12, 12),
-    new THREE.MeshStandardMaterial({ color: skin })
-  );
-  head.position.y = 2.1;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.34, 14, 14), skinMat);
+  head.position.y = 2.2;
+  head.castShadow = true;
   player.add(head);
 
-  // Hair / bun
-  const hair = new THREE.Mesh(
-    new THREE.SphereGeometry(0.22, 8, 8),
-    new THREE.MeshStandardMaterial({ color: 0x2a1a0e })
-  );
-  hair.position.set(0, 2.4, -0.05);
-  player.add(hair);
+  // Hair bun
+  const bun = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 10), hairMat);
+  bun.position.set(0, 2.52, -0.08);
+  player.add(bun);
 
   // Mustache
-  const mustache = new THREE.Mesh(
-    new THREE.BoxGeometry(0.25, 0.06, 0.08),
-    new THREE.MeshStandardMaterial({ color: 0x2a1a0e })
-  );
-  mustache.position.set(0, 1.95, 0.28);
-  player.add(mustache);
+  const stache = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.05, 0.1), hairMat);
+  stache.position.set(0, 2.02, 0.3);
+  player.add(stache);
 
   // Arms
-  const armGeo = new THREE.BoxGeometry(0.2, 0.7, 0.2);
-  const armMat = new THREE.MeshStandardMaterial({ color: clothes });
-  const leftArm = new THREE.Mesh(armGeo, armMat);
-  leftArm.position.set(-0.5, 1.3, 0);
+  const armGeo = new THREE.BoxGeometry(0.22, 0.75, 0.22);
+  const leftArm = new THREE.Mesh(armGeo, clothMat);
+  leftArm.position.set(-0.52, 1.35, 0);
   leftArm.castShadow = true;
   player.add(leftArm);
-  const rightArm = new THREE.Mesh(armGeo, armMat);
-  rightArm.position.set(0.5, 1.3, 0);
+  const rightArm = new THREE.Mesh(armGeo, clothMat);
+  rightArm.position.set(0.52, 1.35, 0);
   rightArm.castShadow = true;
   player.add(rightArm);
 
   // Legs
-  const legGeo = new THREE.BoxGeometry(0.25, 0.8, 0.25);
-  const legMat = new THREE.MeshStandardMaterial({ color: 0x2a1a0e });
-  const leftLeg = new THREE.Mesh(legGeo, legMat);
-  leftLeg.position.set(-0.2, 0.4, 0);
+  const legGeo = new THREE.BoxGeometry(0.26, 0.85, 0.26);
+  const leftLeg = new THREE.Mesh(legGeo, new THREE.MeshStandardMaterial({ color: 0x1a120c }));
+  leftLeg.position.set(-0.22, 0.42, 0);
   leftLeg.castShadow = true;
   player.add(leftLeg);
-  const rightLeg = new THREE.Mesh(legGeo, legMat);
-  rightLeg.position.set(0.2, 0.4, 0);
+  const rightLeg = new THREE.Mesh(legGeo, new THREE.MeshStandardMaterial({ color: 0x1a120c }));
+  rightLeg.position.set(0.22, 0.42, 0);
   rightLeg.castShadow = true;
   player.add(rightLeg);
 
-  player.position.set(0, 0, 6);
+  player.position.set(0, 0, 7);
   scene.add(player);
 
-  // Bounds for cul-de-sac
-  const bounds = { minX: -14, maxX: 14, minZ: -14, maxZ: 10 };
+  // Bounds
+  const bounds = { minX: -13, maxX: 13, minZ: -15, maxZ: 11 };
 
-  // Input
+  // Input + animation
   const keys = {};
   window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
   window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
-  const speed = 0.12;
-  let walkPhase = 0;
+  const speed = 0.13;
+  let phase = 0;
 
   function updatePlayer() {
     let dx = 0, dz = 0;
@@ -182,35 +222,25 @@
     if (keys['a'] || keys['arrowleft']) dx -= speed;
     if (keys['d'] || keys['arrowright']) dx += speed;
 
-    if (dx !== 0 || dz !== 0) {
+    if (dx || dz) {
       player.position.x = Math.max(bounds.minX, Math.min(bounds.maxX, player.position.x + dx));
       player.position.z = Math.max(bounds.minZ, Math.min(bounds.maxZ, player.position.z + dz));
-
-      // Face movement
       player.rotation.y = Math.atan2(dx, dz);
 
-      // Simple walk animation
-      walkPhase += 0.25;
-      leftLeg.rotation.x = Math.sin(walkPhase) * 0.6;
-      rightLeg.rotation.x = Math.sin(walkPhase + Math.PI) * 0.6;
-      leftArm.rotation.x = Math.sin(walkPhase + Math.PI) * 0.4;
-      rightArm.rotation.x = Math.sin(walkPhase) * 0.4;
+      phase += 0.28;
+      leftLeg.rotation.x = Math.sin(phase) * 0.7;
+      rightLeg.rotation.x = Math.sin(phase + Math.PI) * 0.7;
+      leftArm.rotation.x = Math.sin(phase + Math.PI) * 0.45;
+      rightArm.rotation.x = Math.sin(phase) * 0.45;
     } else {
-      leftLeg.rotation.x = 0;
-      rightLeg.rotation.x = 0;
-      leftArm.rotation.x = 0;
-      rightArm.rotation.x = 0;
+      leftLeg.rotation.x = rightLeg.rotation.x = leftArm.rotation.x = rightArm.rotation.x = 0;
     }
   }
 
   function updateCamera() {
-    const target = new THREE.Vector3(
-      player.position.x,
-      player.position.y + 5,
-      player.position.z + 12
-    );
-    camera.position.lerp(target, 0.08);
-    camera.lookAt(player.position.x, player.position.y + 1.5, player.position.z);
+    const target = new THREE.Vector3(player.position.x, 6.5, player.position.z + 13);
+    camera.position.lerp(target, 0.07);
+    camera.lookAt(player.position.x, 1.6, player.position.z);
   }
 
   // Interaction
@@ -218,12 +248,11 @@
   function checkNear() {
     near = null;
     houses.forEach(h => {
-      if (player.position.distanceTo(h.position) < 4.5) near = h.userData.name;
+      if (player.position.distanceTo(h.position) < 4.8) near = h.userData.name;
     });
-    const hint = document.getElementById('hint');
-    hint.textContent = near
+    document.getElementById('hint').textContent = near
       ? `Press E to enter ${near}`
-      : 'WASD / Arrows to walk the cul-de-sac · Approach a house & press E';
+      : 'WASD / Arrows · Walk the cul-de-sac · Approach a house & press E';
   }
 
   window.addEventListener('keydown', e => {
@@ -235,12 +264,11 @@
     const el = document.getElementById(id);
     if (el) el.classList.add('active');
   }
-
   document.querySelectorAll('.close').forEach(b => {
     b.onclick = () => document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   });
 
-  // Click houses
+  // Click
   const ray = new THREE.Raycaster();
   const mouse = new THREE.Vector2();
   window.addEventListener('click', e => {
@@ -251,7 +279,7 @@
     if (hits.length) {
       let o = hits[0].object;
       while (o && !o.userData.name) o = o.parent;
-      if (o && o.userData.name) openPanel(o.userData.name);
+      if (o?.userData.name) openPanel(o.userData.name);
     }
   });
 
