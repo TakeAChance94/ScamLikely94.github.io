@@ -25,3 +25,9 @@ links.forEach(link => {
 
 // Start on home
 showSection('home');
+
+// Ensure video plays on mobile
+const bgVideo = document.querySelector('.bg-video');
+if (bgVideo) {
+  bgVideo.play().catch(() => {});
+}
