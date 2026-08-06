@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updatePrompt() {
-    promptText.textContent = `visitor@site:${cwd}$`;
+    promptText.textContent = `visitor@takeachance:${cwd}$`;
   }
 
   function getCompletions(partial) {
@@ -198,6 +198,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.addEventListener('click', () => input.focus());
 
+  // Friendly ASCII arts
+  const arts = [
+`  (\\_/)
+  ( •_•)
+  / >🍪   Have a cookie!`,
+`   /\\_/\\
+  ( o.o )
+   > ^ <   Hello there!`,
+`    .--.
+   |o_o |
+   |:_/ |  Welcome!
+  //   \\ \\
+ (|     | )
+/'\\_   _/\`\\
+\\___)=(___/`,
+`  ┌(•_•)┐
+  └(   )┘
+   (───)   Let's explore!`,
+`   (•‿•)
+  /│  │\\
+   │  │   Glad you're here!`
+  ];
+
   // Boot
   input.disabled = true;
   print('Initializing session...');
@@ -207,6 +230,9 @@ document.addEventListener('DOMContentLoaded', () => {
       print('');
       print('Hello, I am Chance Gammill. Welcome to my site.');
       print('Feel free to look around or type \'help\' if you need a list of available commands.');
+      print('');
+      const art = arts[Math.floor(Math.random() * arts.length)];
+      art.split('\n').forEach(line => print(line, 'info'));
       print('');
       input.disabled = false;
       input.focus();
