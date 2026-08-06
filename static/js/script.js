@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
   const output = document.getElementById('output');
-  const input = document.getsElementById('cmd-input');
+  const input = document.getElementById('cmd-input');
   const promptText = document.getElementById('prompt-text');
 
   if (!output || !input) return;
