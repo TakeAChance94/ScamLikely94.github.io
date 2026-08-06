@@ -67,15 +67,14 @@ function typeLines(lines, delay = 40) {
 
 async function boot() {
   input.disabled = true;
-  const bootLines = [
-    'Initializing session...',
-    'Loading profile...',
-    '',
-    'Hello, I am Chance Gammill. Welcome to my site.',
-    'Feel free to look around or type \'help\' if you need a list of available commands.',
-    ''
-  ];
-  await typeLines(bootLines, 35);
+  print('Initializing session...');
+  await new Promise(r => setTimeout(r, 300));
+  print('Loading profile...');
+  await new Promise(r => setTimeout(r, 300));
+  print('');
+  print('Hello, I am Chance Gammill. Welcome to my site.');
+  print('Feel free to look around or type \'help\' if you need a list of available commands.');
+  print('');
   input.disabled = false;
   input.focus();
 }
