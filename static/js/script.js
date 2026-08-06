@@ -35,18 +35,17 @@ document.addEventListener('DOMContentLoaded', () => {
     'hobbies.txt': {
       type: 'file',
       content: [
-        'Coding side projects',
-        'Reading tech blogs',
+        'Traveling',
+        'Rock climbing',
         'Hiking & outdoors',
-        'Photography'
+        'Learning new things'
       ]
     },
     'contact_info.txt': {
       type: 'file',
       content: [
-        'Email: you@example.com',
-        'GitHub: @yourusername',
-        'LinkedIn: yourprofile'
+        'Email: Chance@takeachance.info',
+        'LinkedIn: https://www.linkedin.com/in/chancegammill/'
       ]
     }
   };
