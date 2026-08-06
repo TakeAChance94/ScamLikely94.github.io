@@ -71,8 +71,8 @@ async function boot() {
     'Initializing session...',
     'Loading profile...',
     '',
-    'Welcome to [Your Name]\'s terminal.',
-    'Type "help" for available commands.',
+    'Hello, I am Chance Gammill. Welcome to my site.',
+    'Feel free to look around or type \'help\' if you need a list of available commands.',
     ''
   ];
   await typeLines(bootLines, 35);
