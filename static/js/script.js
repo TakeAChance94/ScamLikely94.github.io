@@ -29,5 +29,9 @@ showSection('home');
 // Ensure video plays on mobile
 const bgVideo = document.querySelector('.bg-video');
 if (bgVideo) {
-  bgVideo.play().catch(() => {});
+  const tryPlay = () => bgVideo.play().catch(() => {});
+  tryPlay();
+  document.addEventListener('touchstart', tryPlay, { once: true });
+  document.addEventListener('click', tryPlay, { once: true });
+  bgVideo.addEventListener('loadeddata', tryPlay);
 }
