@@ -2,7 +2,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const output = document.getElementById('output');
   const input = document.getElementById('cmd-input');
   const promptText = document.getElementById('prompt-text');
-
   if (!output || !input) return;
 
   let cwd = '~';
@@ -36,20 +35,53 @@ document.addEventListener('DOMContentLoaded', () => {
     'hobbies.txt': {
       type: 'file',
       content: [
-        'Traveling',
-        'Rock Climbing',
+        'Coding side projects',
+        'Reading tech blogs',
         'Hiking & outdoors',
-        'Learning new skills'
+        'Photography'
       ]
     },
     'contact_info.txt': {
       type: 'file',
       content: [
-        'Email: Chance@takeachance.info',
-        'LinkedIn: https://www.linkedin.com/in/chancegammill/'
+        'Email: you@example.com',
+        'GitHub: @yourusername',
+        'LinkedIn: yourprofile'
       ]
     }
   };
+
+  // Modal elements
+  const modal = document.getElementById('email-modal');
+  const subjectInput = document.getElementById('email-subject');
+  const bodyInput = document.getElementById('email-body');
+  const sendBtn = document.getElementById('email-send');
+  const cancelBtn = document.getElementById('email-cancel');
+
+  function openEmailModal() {
+    subjectInput.value = '';
+    bodyInput.value = '';
+    modal.classList.add('open');
+    subjectInput.focus();
+  }
+
+  function closeEmailModal() {
+    modal.classList.remove('open');
+    input.focus();
+  }
+
+  sendBtn.addEventListener('click', () => {
+    const subject = encodeURIComponent(subjectInput.value || 'Hello from your site');
+    const body = encodeURIComponent(bodyInput.value || '');
+    // Opens visitor's email client pre-filled
+    window.location.href = `mailto:you@example.com?subject=${subject}&body=${body}`;
+    closeEmailModal();
+  });
+
+  cancelBtn.addEventListener('click', closeEmailModal);
+  modal.addEventListener('click', e => {
+    if (e.target === modal) closeEmailModal();
+  });
 
   function print(text, className = '') {
     const div = document.createElement('div');
@@ -75,27 +107,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const parts = partial.trim().split(/\s+/);
     const base = parts[0] || '';
     const arg = parts[1] || '';
-
     const commands = ['help', 'ls', 'cd', 'cat', 'clear', 'whoami'];
 
     if (parts.length <= 1) {
       return commands.filter(c => c.startsWith(base));
     }
-
     if (base === 'cd') {
       if (cwd === '~') {
         return ['skills', 'hobbies', 'contact', '..', '~'].filter(d => d.startsWith(arg));
       }
       return ['..', '~'].filter(d => d.startsWith(arg));
     }
-
     if (base === 'cat') {
       const dir = fs[cwd];
       if (dir && dir.type === 'dir') {
         return dir.children.filter(f => f.startsWith(arg));
       }
     }
-
     return [];
   }
 
@@ -169,7 +197,22 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       const file = fs[arg];
       if (file && file.type === 'file') {
-        file.content.forEach(line => print(line));
+        if (arg === 'contact_info.txt') {
+          printHTML('Email: <a href="#" id="open-email" style="color:#79c0ff;text-decoration:underline;cursor:pointer">you@example.com</a>');
+          print('GitHub: @yourusername');
+          print('LinkedIn: yourprofile');
+          print('');
+          print('Tip: click the email address to send a message', 'muted');
+          setTimeout(() => {
+            const link = document.getElementById('open-email');
+            if (link) link.addEventListener('click', e => {
+              e.preventDefault();
+              openEmailModal();
+            });
+          }, 0);
+        } else {
+          file.content.forEach(line => print(line));
+        }
       }
     }
     else if (base === 'clear') {
@@ -195,7 +238,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  document.addEventListener('click', () => input.focus());
+  document.addEventListener('click', () => {
+    if (!modal.classList.contains('open')) input.focus();
+  });
 
   // Friendly ASCII arts
   const arts = [
@@ -207,14 +252,14 @@ document.addEventListener('DOMContentLoaded', () => {
          ( \\|||_
   ,-----(.-''--\`\`-------.
  /_______\`'______________\\
-/                          \\`,
+/                       \\`,
 
 `    ___
    //_\\\\_
  ."\\\\    ".
-/            \\
-|             \\_
-|         ,--.-.)
+/          \\
+|           \\_
+|       ,--.-.)
  \\     /  o \\o\\
  /\\/\\  \\    /_/
   (_.   \`--'__)
