@@ -200,25 +200,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Friendly ASCII arts
   const arts = [
-`  (\\_/)
-  ( •_•)
-  / >🍪   Have a cookie!`,
-`   /\\_/\\
-  ( o.o )
-   > ^ <   Hello there!`,
-`    .--.
-   |o_o |
-   |:_/ |  Welcome!
-  //   \\ \\
- (|     | )
-/'\\_   _/\`\\
-\\___)=(___/`,
-`  ┌(•_•)┐
-  └(   )┘
-   (───)   Let's explore!`,
-`   (•‿•)
-  /│  │\\
-   │  │   Glad you're here!`
+`        /\\_/\\  
+       ( o.o ) 
+        > ^ <  
+      Have a nice day!`,
+
+`      (\\_/)
+      ( •_•)
+      / >🍪
+   Cookie for you!`,
+
+`         .--.
+        |o_o |
+        |:_/ |
+       //   \\ \\
+      (|     | )
+     /'\\_   _/\`\\
+     \\___)=(___/
+        Welcome!`,
+
+`      ┌(•‿•)┐
+      │     │
+      └(───)┘
+     Let's explore!`,
+
+`       /\\___/\\
+      (  o o  )
+      /   Y   \\
+     (  \\_/  )
+      \\_____/
+     Hello friend!`,
+
+`      .-"-.
+     /  _  \\
+     | (o)(o)
+     |  .-.  |
+      \\  =  /
+       '---'
+     Glad you're here!`
   ];
 
   // Boot
