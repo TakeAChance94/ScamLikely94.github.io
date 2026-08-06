@@ -3,68 +3,60 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Home | Front Door</title>
+  <title>Home | Cul-de-sac</title>
   <link rel="stylesheet" href="static/css/styles.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <video class="bg-video" autoplay muted loop playsinline webkit-playsinline preload="auto">
-    <source src="https://cdn.pixabay.com/video/2024/03/08/203449-921267347_large.mp4" type="video/mp4">
-  </video>
-  <div class="bg-overlay"></div>
-  <nav class="nav">
-    <a href="#" class="logo" data-section="home">Chance Gammill</a>
-    <ul>
-      <li><a href="#" data-section="skills">Skills</a></li>
-      <li><a href="#" data-section="hobbies">Hobbies</a></li>
-      <li><a href="#" data-section="contact">Contact</a></li>
-    </ul>
-  </nav>
+  <div id="scene">
+    <img src="static/img/culdesac.jpg" alt="Cul-de-sac" class="bg">
+    
+    <!-- Building hit zones + labels -->
+    <div class="building" data-panel="skills" style="left:8%; top:35%; width:28%; height:40%;">
+      <span class="label">Skills</span>
+    </div>
+    <div class="building" data-panel="hobbies" style="left:38%; top:18%; width:24%; height:35%;">
+      <span class="label">Hobbies</span>
+    </div>
+    <div class="building" data-panel="contact" style="left:65%; top:32%; width:28%; height:42%;">
+      <span class="label">Contact</span>
+    </div>
 
-  <main>
-    <section id="home" class="section active">
-      <div class="content">
-        <h1 class="fade-in">Hello, I'm <span>Chance Gammill</span></h1>
-        <p class="fade-in delay-1">Welcome to my digital front door.</p>
-        <p class="fade-in delay-2">Explore my skills, hobbies, or let me know how I can help.</p>
-      </div>
-    </section>
+    <img src="static/img/samurai.jpg" alt="Samurai" id="player">
+  </div>
 
-    <section id="skills" class="section">
-      <div class="content">
-        <h2 class="fade-in">Skills</h2>
-        <ul class="card-list">
-          <li class="card fade-in delay-1">Web Development</li>
-          <li class="card fade-in delay-2">UI / UX Design</li>
-          <li class="card fade-in delay-3">JavaScript & CSS</li>
-          <li class="card fade-in delay-4">Problem Solving</li>
-        </ul>
-      </div>
-    </section>
+  <!-- Info panels -->
+  <div id="panels">
+    <div class="panel" id="skills">
+      <button class="close">&times;</button>
+      <h2>Skills</h2>
+      <ul>
+        <li>Web Development</li>
+        <li>UI / UX Design</li>
+        <li>JavaScript & CSS</li>
+        <li>Problem Solving</li>
+      </ul>
+    </div>
+    <div class="panel" id="hobbies">
+      <button class="close">&times;</button>
+      <h2>Hobbies</h2>
+      <ul>
+        <li>Coding side projects</li>
+        <li>Reading tech blogs</li>
+        <li>Hiking & outdoors</li>
+        <li>Photography</li>
+      </ul>
+    </div>
+    <div class="panel" id="contact">
+      <button class="close">&times;</button>
+      <h2>Contact</h2>
+      <p>Email: <a href="mailto:you@example.com">you@example.com</a></p>
+      <p>GitHub: <a href="https://github.com/yourusername" target="_blank">@yourusername</a></p>
+      <p>LinkedIn: <a href="https://linkedin.com/in/yourprofile" target="_blank">yourprofile</a></p>
+    </div>
+  </div>
 
-    <section id="hobbies" class="section">
-      <div class="content">
-        <h2 class="fade-in">Hobbies</h2>
-        <ul class="card-list">
-          <li class="card fade-in delay-1">Coding side projects</li>
-          <li class="card fade-in delay-2">Reading tech blogs</li>
-          <li class="card fade-in delay-3">Hiking & outdoors</li>
-          <li class="card fade-in delay-4">Solving problems</li>
-        </ul>
-      </div>
-    </section>
-
-    <section id="contact" class="section">
-      <div class="content">
-        <h2 class="fade-in">Contact Me</h2>
-        <div class="contact-info">
-          <p class="fade-in delay-1">Email: <a href="mailto:Chance@takeachance.info">chance@takeachance.info</a></p>
-          <p class="fade-in delay-3">LinkedIn: <a href="https://www.linkedin.com/in/chancegammill/" target="_blank">Chance Gammill</a></p>
-        </div>
-      </div>
-    </section>
-  </main>
+  <div id="hint">Arrow keys / WASD to move · Walk into a house</div>
 
   <script src="static/js/script.js"></script>
 </body>
