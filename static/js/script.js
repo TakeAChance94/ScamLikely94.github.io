@@ -1,207 +1,332 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Take A Chance</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍀</text></svg>">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      background: #0c0c0c;
-      color: #d4d4d4;
-      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
-      font-size: 15px;
-      line-height: 1.5;
-      height: 100vh;
-      overflow: hidden;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-    #terminal {
-      width: 100%;
-      max-width: 820px;
-      height: 90vh;
-      max-height: 620px;
-      background: #111;
-      border: 1px solid #333;
-      border-radius: 10px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-    .titlebar {
-      background: #1a1a1a;
-      padding: 10px 14px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      border-bottom: 1px solid #333;
-      user-select: none;
-    }
-    .dot { width: 12px; height: 12px; border-radius: 50%; }
-    .dot.red { background: #ff5f56; }
-    .dot.yellow { background: #ffbd2e; }
-    .dot.green { background: #27c93f; }
-    .title { flex: 1; text-align: center; color: #888; font-size: 13px; }
-    #output {
-      flex: 1;
-      padding: 18px 20px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-    .line { margin-bottom: 2px; }
-    .prompt { color: #7ee787; }
-    .cmd { color: #e6edf3; }
-    .error { color: #ff7b72; }
-    .info { color: #79c0ff; }
-    .muted { color: #8b949e; }
-    #input-line {
-      display: flex;
-      padding: 12px 20px 18px;
-      align-items: center;
-      border-top: 1px solid #222;
-    }
-    #prompt-text { color: #7ee787; margin-right: 8px; white-space: nowrap; }
-    #cmd-input {
-      flex: 1;
-      background: transparent;
-      border: none;
-      outline: none;
-      color: #e6edf3;
-      font-family: inherit;
-      font-size: inherit;
-      caret-color: #7ee787;
-    }
-    .cursor {
-      display: inline-block;
-      width: 8px;
-      height: 1.1em;
-      background: #7ee787;
-      animation: blink 1s step-end infinite;
-      vertical-align: text-bottom;
-      margin-left: 1px;
-    }
-    @keyframes blink {
-      50% { opacity: 0; }
-    }
-    a { color: #79c0ff; text-decoration: none; }
-    a:hover { text-decoration: underline; }
+document.addEventListener('DOMContentLoaded', () => {
+  const output = document.getElementById('output');
+  const input = document.getElementById('cmd-input');
+  const promptText = document.getElementById('prompt-text');
+  if (!output || !input) return;
 
-    /* Email modal */
-    #email-modal {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.7);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 100;
-      opacity: 0;
-      visibility: hidden;
-      transition: 0.2s;
-    }
-    #email-modal.open {
-      opacity: 1;
-      visibility: visible;
-    }
-    .modal-box {
-      background: #1a1a1a;
-      border: 1px solid #333;
-      border-radius: 10px;
-      padding: 1.5rem;
-      width: 90%;
-      max-width: 420px;
-      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-    }
-    .modal-box h3 {
-      margin-bottom: 1rem;
-      color: #e6edf3;
-      font-size: 1.1rem;
-    }
-    .modal-box label {
-      display: block;
-      color: #8b949e;
-      font-size: 0.85rem;
-      margin-bottom: 0.35rem;
-    }
-    .modal-box input,
-    .modal-box textarea {
-      width: 100%;
-      background: #0c0c0c;
-      border: 1px solid #333;
-      border-radius: 6px;
-      color: #e6edf3;
-      font-family: inherit;
-      font-size: 0.95rem;
-      padding: 0.6rem 0.75rem;
-      margin-bottom: 1rem;
-      outline: none;
-    }
-    .modal-box input:focus,
-    .modal-box textarea:focus {
-      border-color: #7ee787;
-    }
-    .modal-box textarea {
-      min-height: 120px;
-      resize: vertical;
-    }
-    .modal-actions {
-      display: flex;
-      gap: 0.75rem;
-      justify-content: flex-end;
-    }
-    .modal-actions button {
-      border: none;
-      border-radius: 6px;
-      padding: 0.55rem 1.1rem;
-      font-family: inherit;
-      font-size: 0.9rem;
-      cursor: pointer;
-    }
-    #email-send {
-      background: #7ee787;
-      color: #0c0c0c;
-      font-weight: 600;
-    }
-    #email-cancel {
-      background: #333;
-      color: #d4d4d4;
-    }
-  </style>
-</head>
-<body>
-  <div id="terminal">
-    <div class="titlebar">
-      <div class="dot red"></div>
-      <div class="dot yellow"></div>
-      <div class="dot green"></div>
-      <div class="title">visitor@takeachance — zsh</div>
-    </div>
-    <div id="output"></div>
-    <div id="input-line">
-      <span id="prompt-text">visitor@takeachance:~$</span>
-      <input id="cmd-input" type="text" autocomplete="off" autofocus spellcheck="false">
-    </div>
-  </div>
+  let cwd = '~';
 
-  <div id="email-modal">
-    <div class="modal-box">
-      <h3>Send a message</h3>
-      <label for="email-subject">Subject</label>
-      <input type="text" id="email-subject" placeholder="Hello...">
-      <label for="email-body">Message</label>
-      <textarea id="email-body" placeholder="Write your message here..."></textarea>
-      <div class="modal-actions">
-        <button id="email-cancel">Cancel</button>
-        <button id="email-send">Send</button>
-      </div>
-    </div>
-  </div>
+  const fs = {
+    '~': {
+      type: 'dir',
+      children: ['skills', 'hobbies', 'contact']
+    },
+    'skills': {
+      type: 'dir',
+      children: ['skills.txt']
+    },
+    'hobbies': {
+      type: 'dir',
+      children: ['hobbies.txt']
+    },
+    'contact': {
+      type: 'dir',
+      children: ['contact_info.txt']
+    },
+    'skills.txt': {
+      type: 'file',
+      content: [
+        'Web Development',
+        'UI / UX Design',
+        'JavaScript & CSS',
+        'Problem Solving'
+      ]
+    },
+    'hobbies.txt': {
+      type: 'file',
+      content: [
+        'Coding side projects',
+        'Reading tech blogs',
+        'Hiking & outdoors',
+        'Photography'
+      ]
+    },
+    'contact_info.txt': {
+      type: 'file',
+      content: [
+        'Email: you@example.com',
+        'GitHub: @yourusername',
+        'LinkedIn: yourprofile'
+      ]
+    }
+  };
 
-  <script src="static/js/script.js"></script>
-</body>
-</html>
+  // Modal elements
+  const modal = document.getElementById('email-modal');
+  const subjectInput = document.getElementById('email-subject');
+  const bodyInput = document.getElementById('email-body');
+  const sendBtn = document.getElementById('email-send');
+  const cancelBtn = document.getElementById('email-cancel');
+
+  function openEmailModal() {
+    subjectInput.value = '';
+    bodyInput.value = '';
+    modal.classList.add('open');
+    subjectInput.focus();
+  }
+
+  function closeEmailModal() {
+    modal.classList.remove('open');
+    input.focus();
+  }
+
+  sendBtn.addEventListener('click', () => {
+    const subject = encodeURIComponent(subjectInput.value || 'Hello from your site');
+    const body = encodeURIComponent(bodyInput.value || '');
+    // Opens visitor's email client pre-filled
+    window.location.href = `mailto:you@example.com?subject=${subject}&body=${body}`;
+    closeEmailModal();
+  });
+
+  cancelBtn.addEventListener('click', closeEmailModal);
+  modal.addEventListener('click', e => {
+    if (e.target === modal) closeEmailModal();
+  });
+
+  function print(text, className = '') {
+    const div = document.createElement('div');
+    div.className = 'line ' + className;
+    div.textContent = text;
+    output.appendChild(div);
+    output.scrollTop = output.scrollHeight;
+  }
+
+  function printHTML(html) {
+    const div = document.createElement('div');
+    div.className = 'line';
+    div.innerHTML = html;
+    output.appendChild(div);
+    output.scrollTop = output.scrollHeight;
+  }
+
+  function updatePrompt() {
+    promptText.textContent = `visitor@takeachance:${cwd}$`;
+  }
+
+  function getCompletions(partial) {
+    const parts = partial.trim().split(/\s+/);
+    const base = parts[0] || '';
+    const arg = parts[1] || '';
+    const commands = ['help', 'ls', 'cd', 'cat', 'clear', 'whoami'];
+
+    if (parts.length <= 1) {
+      return commands.filter(c => c.startsWith(base));
+    }
+    if (base === 'cd') {
+      if (cwd === '~') {
+        return ['skills', 'hobbies', 'contact', '..', '~'].filter(d => d.startsWith(arg));
+      }
+      return ['..', '~'].filter(d => d.startsWith(arg));
+    }
+    if (base === 'cat') {
+      const dir = fs[cwd];
+      if (dir && dir.type === 'dir') {
+        return dir.children.filter(f => f.startsWith(arg));
+      }
+    }
+    return [];
+  }
+
+  function handleTab() {
+    const val = input.value;
+    const completions = getCompletions(val);
+    if (completions.length === 1) {
+      const parts = val.trim().split(/\s+/);
+      if (parts.length <= 1) {
+        input.value = completions[0] + ' ';
+      } else {
+        parts[parts.length - 1] = completions[0];
+        input.value = parts.join(' ') + (completions[0].endsWith('.txt') ? '' : ' ');
+      }
+    } else if (completions.length > 1) {
+      printHTML(`<span class="prompt">${promptText.textContent}</span> <span class="cmd">${val}</span>`);
+      print(completions.join('  '), 'info');
+    }
+  }
+
+  function handleCommand(raw) {
+    const cmd = raw.trim();
+    if (!cmd) return;
+
+    printHTML(`<span class="prompt">${promptText.textContent}</span> <span class="cmd">${raw}</span>`);
+
+    const parts = cmd.split(/\s+/);
+    const base = parts[0].toLowerCase();
+    const arg = parts[1] || '';
+
+    if (base === 'help') {
+      print('Available commands:', 'info');
+      print('  help              show this message');
+      print('  ls                list directory contents');
+      print('  cd <dir>          change directory');
+      print('  cat <file>        show file contents');
+      print('  clear             clear the screen');
+      print('  whoami            about me');
+      print('');
+      print('Tip: use Tab for autocomplete', 'muted');
+    }
+    else if (base === 'ls') {
+      const dir = fs[cwd];
+      if (dir && dir.type === 'dir') {
+        print(dir.children.join('  '), 'info');
+      }
+    }
+    else if (base === 'cd') {
+      if (!arg || arg === '~' || arg === '..' || arg === '/') {
+        cwd = '~';
+        updatePrompt();
+      } else if (cwd === '~' && fs[arg] && fs[arg].type === 'dir') {
+        cwd = arg;
+        updatePrompt();
+      } else if (arg === '..' || arg === '~') {
+        cwd = '~';
+        updatePrompt();
+      } else {
+        print(`cd: no such directory: ${arg}`, 'error');
+      }
+    }
+    else if (base === 'cat') {
+      if (!arg) {
+        print('cat: missing file operand', 'error');
+        return;
+      }
+      const dir = fs[cwd];
+      if (!dir || dir.type !== 'dir' || !dir.children.includes(arg)) {
+        print(`cat: ${arg}: No such file`, 'error');
+        return;
+      }
+      const file = fs[arg];
+      if (file && file.type === 'file') {
+        if (arg === 'contact_info.txt') {
+          printHTML('Email: <a href="#" id="open-email" style="color:#79c0ff;text-decoration:underline;cursor:pointer">you@example.com</a>');
+          print('GitHub: @yourusername');
+          print('LinkedIn: yourprofile');
+          print('');
+          print('Tip: click the email address to send a message', 'muted');
+          setTimeout(() => {
+            const link = document.getElementById('open-email');
+            if (link) link.addEventListener('click', e => {
+              e.preventDefault();
+              openEmailModal();
+            });
+          }, 0);
+        } else {
+          file.content.forEach(line => print(line));
+        }
+      }
+    }
+    else if (base === 'clear') {
+      output.innerHTML = '';
+    }
+    else if (base === 'whoami') {
+      print('Chance Gammill', 'info');
+      print('Digital front door · Type "ls" then "cd" and "cat" to explore');
+    }
+    else {
+      print(`command not found: ${base}`, 'error');
+      print('Type "help" for available commands.', 'muted');
+    }
+  }
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      handleCommand(input.value);
+      input.value = '';
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      handleTab();
+    }
+  });
+
+  document.addEventListener('click', () => {
+    if (!modal.classList.contains('open')) input.focus();
+  });
+
+  // Friendly ASCII arts
+  const arts = [
+`           ,-.
+          .:\` \`-.
+          |:|  __ b
+           \`;-(
+          ,'  |
+         ( \\|||_
+  ,-----(.-''--\`\`-------.
+ /_______\`'______________\\
+/                       \\`,
+
+`    ___
+   //_\\\\_
+ ."\\\\    ".
+/          \\
+|           \\_
+|       ,--.-.)
+ \\     /  o \\o\\
+ /\\/\\  \\    /_/
+  (_.   \`--'__)
+   |     .-'  \\
+   |  .-'.     )
+   | (  _/--.-'
+   |  \`.___.'
+         (`,
+
+`           __..--''\`\`---....___   _..._    __
+ /// //_.-'    .-/";  \`        \`\`<._  \`\`.''_ \`. / // /
+///_.-' _..--.'_    \\                    \`( ) ) // //
+/ (_..-' // (< _     ;_..__               ; \`' / ///
+ / // // //  \`-._,_)' // / \`\`--...____..-' /// / //`,
+
+`            .'\\   /\`.
+         .'.-.\`-'.-.\`.
+    ..._:   .-. .-.   :_...
+  .'    '-.(o ) (o ).-'    \`.
+ :  _    _ _\`~(_)~\`_ _    _  :
+:  /:   ' .-=_   _=-. \`   ;\\  :
+:   :|-.._  '     \`  _..-|:   :
+ :   \`:| |\`:-:-.-:-:'| |:'   :
+  \`.   \`.| | | | | | |.'   .'
+    \`.   \`-:_| | |_:-'   .'
+      \`-._   \`\`\`\`    _.-'
+          \`\`-------''`,
+
+` /^ ^\\
+/ 0 0 \\
+V\\ Y /V
+ / - \\
+ |    \\
+ || (__V`,
+
+`                             ___-------___
+                         _-~~             ~~-_
+                      _-~                    /~-_
+   /^\\__/^\\         /~  \\                   /    \\
+ /|  O|| O|        /      \\_______________/        \\
+| |___||__|      /       /                \\          \\
+|          \\    /      /                    \\          \\
+|   (_______) /______/                        \\_________ \\
+|         / /         \\                      /            \\
+ \\         \\^\\\\         \\                  /               \\     /
+   \\         ||           \\______________/      _-_       //\\__//
+     \\       ||------_-~~-_ ------------- \\ --/~   ~\\    || __/
+       ~-----||====/~     |==================|       |/~~~~~
+        (_(__/  ./     /                    \\_\\      \\.
+               (_(___/                         \\_____)_)`
+  ];
+
+  // Boot
+  input.disabled = true;
+  print('Initializing session...');
+  setTimeout(() => {
+    print('Loading profile...');
+    setTimeout(() => {
+      print('');
+      print('Hello, I am Chance Gammill. Welcome to my site.');
+      print('Feel free to look around or type \'help\' if you need a list of available commands.');
+      print('');
+      const art = arts[Math.floor(Math.random() * arts.length)];
+      art.split('\n').forEach(line => print(line, 'info'));
+      print('');
+      input.disabled = false;
+      input.focus();
+    }, 250);
+  }, 250);
+});
