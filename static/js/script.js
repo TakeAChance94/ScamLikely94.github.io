@@ -72,7 +72,13 @@ document.addEventListener('DOMContentLoaded', () => {
   sendBtn.addEventListener('click', () => {
     const subject = encodeURIComponent(subjectInput.value || 'Hello from your site');
     const body = encodeURIComponent(bodyInput.value || '');
-    window.location.href = `mailto:Chance@takeachance.info?subject=${subject}&body=${body}`;
+    const mailto = `mailto:Chance@takeachance.info?subject=${subject}&body=${body}`;
+    const a = document.createElement('a');
+    a.href = mailto;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
     closeEmailModal();
   });
 
