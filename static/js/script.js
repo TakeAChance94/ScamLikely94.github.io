@@ -322,7 +322,7 @@ V\\ Y /V
     print('Loading profile...');
     setTimeout(() => {
       print('');
-      printHTML('Hello, I am <span style="color:#1A3258">Chance Gammill</span>. Welcome to my site.');
+      printHTML('Hello, I am <span style="color:#3B6EA5">Chance Gammill</span>. Welcome to my site.');
       print('Feel free to look around or type \'help\' if you need a list of available commands.');
       print('');
       const art = arts[Math.floor(Math.random() * arts.length)];
