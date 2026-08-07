@@ -50,43 +50,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // Modal elements
-  const modal = document.getElementById('email-modal');
-  const subjectInput = document.getElementById('email-subject');
-  const bodyInput = document.getElementById('email-body');
-  const sendBtn = document.getElementById('email-send');
-  const cancelBtn = document.getElementById('email-cancel');
-
-  function openEmailModal() {
-    subjectInput.value = '';
-    bodyInput.value = '';
-    modal.classList.add('open');
-    subjectInput.focus();
-  }
-
-  function closeEmailModal() {
-    modal.classList.remove('open');
-    input.focus();
-  }
-
-  sendBtn.addEventListener('click', () => {
-    const subject = encodeURIComponent(subjectInput.value || 'Hello from your site');
-    const body = encodeURIComponent(bodyInput.value || '');
-    const mailto = `mailto:Chance@takeachance.info?subject=${subject}&body=${body}`;
-    const a = document.createElement('a');
-    a.href = mailto;
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    closeEmailModal();
-  });
-
-  cancelBtn.addEventListener('click', closeEmailModal);
-  modal.addEventListener('click', e => {
-    if (e.target === modal) closeEmailModal();
-  });
-
   function print(text, className = '') {
     const div = document.createElement('div');
     div.className = 'line ' + className;
@@ -202,17 +165,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const file = fs[arg];
       if (file && file.type === 'file') {
         if (arg === 'contact_info.txt') {
-          printHTML('Email: <a href="#" id="open-email" style="color:#79c0ff;text-decoration:underline;cursor:pointer">Chance@takeachance.info</a>');
+          print('Email: Chance@takeachance.info');
           printHTML('LinkedIn: <a href="https://www.linkedin.com/in/chancegammill/" target="_blank" style="color:#79c0ff">linkedin.com/in/chancegammill</a>');
-          print('');
-          print('Tip: click the email address to send a message', 'muted');
-          setTimeout(() => {
-            const link = document.getElementById('open-email');
-            if (link) link.addEventListener('click', e => {
-              e.preventDefault();
-              openEmailModal();
-            });
-          }, 0);
         } else {
           file.content.forEach(line => print(line));
         }
@@ -241,9 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  document.addEventListener('click', () => {
-    if (!modal.classList.contains('open')) input.focus();
-  });
+  document.addEventListener('click', () => input.focus());
 
   // Friendly ASCII arts
   const arts = [
