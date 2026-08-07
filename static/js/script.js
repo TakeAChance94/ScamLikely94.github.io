@@ -112,12 +112,20 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function handleCommand(raw) {
-    const cmd = raw.trim();
-    if (!cmd) return;
+    const line = raw.trim();
+    if (!line) return;
 
     printHTML(`<span class="prompt">${promptText.textContent}</span> <span class="cmd">${raw}</span>`);
 
-    const parts = cmd.split(/\s+/);
+    // Support chaining with && and ;
+    const chain = line.split(/\s*(?:&&|;)\s*/).filter(Boolean);
+    for (const cmd of chain) {
+      runOne(cmd);
+    }
+  }
+
+  function runOne(cmd) {
+    const parts = cmd.trim().split(/\s+/);
     const base = parts[0].toLowerCase();
     const arg = parts[1] || '';
 
