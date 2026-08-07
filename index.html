@@ -91,86 +91,6 @@
     a { color: #79c0ff; text-decoration: none; }
     a:hover { text-decoration: underline; }
 
-    /* Email modal */
-    #email-modal {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.7);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 100;
-      opacity: 0;
-      visibility: hidden;
-      transition: 0.2s;
-    }
-    #email-modal.open {
-      opacity: 1;
-      visibility: visible;
-    }
-    .modal-box {
-      background: #1a1a1a;
-      border: 1px solid #333;
-      border-radius: 10px;
-      padding: 1.5rem;
-      width: 90%;
-      max-width: 420px;
-      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-    }
-    .modal-box h3 {
-      margin-bottom: 1rem;
-      color: #e6edf3;
-      font-size: 1.1rem;
-    }
-    .modal-box label {
-      display: block;
-      color: #8b949e;
-      font-size: 0.85rem;
-      margin-bottom: 0.35rem;
-    }
-    .modal-box input,
-    .modal-box textarea {
-      width: 100%;
-      background: #0c0c0c;
-      border: 1px solid #333;
-      border-radius: 6px;
-      color: #e6edf3;
-      font-family: inherit;
-      font-size: 0.95rem;
-      padding: 0.6rem 0.75rem;
-      margin-bottom: 1rem;
-      outline: none;
-    }
-    .modal-box input:focus,
-    .modal-box textarea:focus {
-      border-color: #7ee787;
-    }
-    .modal-box textarea {
-      min-height: 120px;
-      resize: vertical;
-    }
-    .modal-actions {
-      display: flex;
-      gap: 0.75rem;
-      justify-content: flex-end;
-    }
-    .modal-actions button {
-      border: none;
-      border-radius: 6px;
-      padding: 0.55rem 1.1rem;
-      font-family: inherit;
-      font-size: 0.9rem;
-      cursor: pointer;
-    }
-    #email-send {
-      background: #7ee787;
-      color: #0c0c0c;
-      font-weight: 600;
-    }
-    #email-cancel {
-      background: #333;
-      color: #d4d4d4;
-    }
   </style>
 </head>
 <body>
@@ -185,20 +105,6 @@
     <div id="input-line">
       <span id="prompt-text">visitor@takeachance:~$</span>
       <input id="cmd-input" type="text" autocomplete="off" autofocus spellcheck="false">
-    </div>
-  </div>
-
-  <div id="email-modal">
-    <div class="modal-box">
-      <h3>Send a message</h3>
-      <label for="email-subject">Subject</label>
-      <input type="text" id="email-subject" placeholder="Hello...">
-      <label for="email-body">Message</label>
-      <textarea id="email-body" placeholder="Write your message here..."></textarea>
-      <div class="modal-actions">
-        <button id="email-cancel">Cancel</button>
-        <button id="email-send">Send</button>
-      </div>
     </div>
   </div>
 
