@@ -165,7 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const file = fs[arg];
       if (file && file.type === 'file') {
         if (arg === 'contact_info.txt') {
-          print('Email: Chance@takeachance.info');
+          printHTML('Email: <span style="color:#79c0ff">Chance@takeachance.info</span>');
           printHTML('LinkedIn: <a href="https://www.linkedin.com/in/chancegammill/" target="_blank" style="color:#79c0ff">linkedin.com/in/chancegammill</a>');
         } else {
           file.content.forEach(line => print(line));
