@@ -72,8 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
   sendBtn.addEventListener('click', () => {
     const subject = encodeURIComponent(subjectInput.value || 'Hello from your site');
     const body = encodeURIComponent(bodyInput.value || '');
-    // Opens visitor's email client pre-filled
-    window.location.href = `mailto:you@example.com?subject=${subject}&body=${body}`;
+    window.location.href = `mailto:Chance@takeachance.info?subject=${subject}&body=${body}`;
     closeEmailModal();
   });
 
@@ -197,9 +196,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const file = fs[arg];
       if (file && file.type === 'file') {
         if (arg === 'contact_info.txt') {
-          printHTML('Email: <a href="#" id="open-email" style="color:#79c0ff;text-decoration:underline;cursor:pointer">you@example.com</a>');
-          print('GitHub: @yourusername');
-          print('LinkedIn: yourprofile');
+          printHTML('Email: <a href="#" id="open-email" style="color:#79c0ff;text-decoration:underline;cursor:pointer">Chance@takeachance.info</a>');
+          printHTML('LinkedIn: <a href="https://www.linkedin.com/in/chancegammill/" target="_blank" style="color:#79c0ff">linkedin.com/in/chancegammill</a>');
           print('');
           print('Tip: click the email address to send a message', 'muted');
           setTimeout(() => {
