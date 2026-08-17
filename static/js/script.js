@@ -203,9 +203,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Validate flags first (bash/GNU behavior)
     if (!checkFlags(base, flags, FLAG_SETS[base])) return;
 
-    // GNU ls/cat: only --help shows help; -h is a real option (ls) or invalid (cat)
-    const wantHelp = flags.has('help') ||
-      (flags.has('h') && base !== 'ls' && base !== 'cat');
+    // ONLY --help shows help (GNU). Short -h is never help (ls: human-readable).
+    const wantHelp = flags.has('help');
     const wantVersion = flags.has('version');
 
     if (wantVersion && base !== 'help') {
