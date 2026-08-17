@@ -227,6 +227,14 @@
   player.position.copy(start);
   scene.add(player);
 
+  // Initial camera outside the planet (not at origin)
+  (function initCam() {
+    const n = player.position.clone().normalize();
+    camera.position.copy(player.position).add(n.multiplyScalar(6)).add(new THREE.Vector3(0, 2, 12));
+    camera.up.copy(player.position.clone().normalize());
+    camera.lookAt(player.position);
+  })();
+
   // ---------- Controls ----------
   const keys = {};
   window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
