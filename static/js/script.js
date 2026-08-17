@@ -222,9 +222,11 @@
 
   // Movement state — smooth accel
   const vel = new THREE.Vector3();
-  const MAX_SPEED = 0.14;
-  const ACCEL = 0.9;
-  const FRICTION = 0.86;
+  const MAX_SPEED = 0.11;
+  const ACCEL = 1.4;
+  const FRICTION = 0.82;
+  const PLAYER_HEIGHT = 0.55; // keep feet above surface
+  const MAX_LAT = 0.85; // stay near top of planet (navigation)
 
   // Camera orbit
   let camYaw = 0, camPitch = 0.35;
@@ -304,24 +306,16 @@
     loop();
   }
 
-  function surfaceBasis(n) {
-    // camera-forward projected on tangent plane
-    const forward = new THREE.Vector3(
-      -Math.sin(camYaw),
-      0,
-      -Math.cos(camYaw)
-    );
-    // rotate into world using up = n
-    const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
-    forward.applyQuaternion(q).projectOnPlane(n).normalize();
-    const right = new THREE.Vector3().crossVectors(forward, n).normalize();
-    // pitch slightly affects? not needed for move
-    return { forward, right };
-  }
-
   function updatePlayer(dt) {
     const n = player.position.clone().normalize();
-    const { forward, right } = surfaceBasis(n);
+
+    // Camera-relative axes on the tangent plane (stable, not sphere-confusing)
+    const camFwd = new THREE.Vector3();
+    camera.getWorldDirection(camFwd);
+    camFwd.projectOnPlane(n);
+    if (camFwd.lengthSq() < 1e-6) camFwd.set(0, 0, 1).projectOnPlane(n);
+    camFwd.normalize();
+    const camRight = new THREE.Vector3().crossVectors(camFwd, n).normalize();
 
     let ix = 0, iz = 0;
     if (keys['w'] || keys['arrowup']) iz += 1;
@@ -329,60 +323,70 @@
     if (keys['a'] || keys['arrowleft']) ix -= 1;
     if (keys['d'] || keys['arrowright']) ix += 1;
 
-    const wish = forward.multiplyScalar(iz).add(right.multiplyScalar(ix));
+    const wish = new THREE.Vector3()
+      .addScaledVector(camFwd, iz)
+      .addScaledVector(camRight, ix);
+
     if (wish.lengthSq() > 1e-6) {
       wish.normalize();
-      vel.addScaledVector(wish, ACCEL * dt);
-      // face movement
-      const up = n.clone();
-      const f = wish.clone().projectOnPlane(up).normalize();
+      vel.addScaledVector(wish, ACCEL * dt * 60 * MAX_SPEED);
+      // face move direction
+      const f = wish.clone().projectOnPlane(n).normalize();
       if (f.lengthSq() > 1e-4) {
-        const x = new THREE.Vector3().crossVectors(up, f).normalize();
-        const z = new THREE.Vector3().crossVectors(x, up).normalize();
-        const m = new THREE.Matrix4().makeBasis(x, up, z);
-        const targetQ = new THREE.Quaternion().setFromRotationMatrix(m);
-        player.quaternion.slerp(targetQ, 1 - Math.pow(0.001, dt));
+        const x = new THREE.Vector3().crossVectors(n, f).normalize();
+        const z = new THREE.Vector3().crossVectors(x, n).normalize();
+        const targetQ = new THREE.Quaternion().setFromRotationMatrix(
+          new THREE.Matrix4().makeBasis(x, n, z)
+        );
+        player.quaternion.slerp(targetQ, 1 - Math.pow(0.00001, dt));
       }
     }
 
-    // clamp + friction
-    if (vel.length() > MAX_SPEED) vel.setLength(MAX_SPEED);
+    // friction + clamp
     vel.multiplyScalar(Math.pow(FRICTION, dt * 60));
-    if (vel.lengthSq() < 1e-6) vel.set(0, 0, 0);
+    if (vel.length() > MAX_SPEED) vel.setLength(MAX_SPEED);
+    if (vel.lengthSq() < 1e-8) vel.set(0, 0, 0);
 
-    player.position.addScaledVector(vel, 1);
-    // stick to sphere
-    const nn = player.position.clone().normalize();
-    player.position.copy(nn.multiplyScalar(R + 0.02));
-    // keep velocity tangent
-    vel.projectOnPlane(nn);
+    player.position.add(vel);
+    // stick + height
+    let nn = player.position.clone().normalize();
+    // clamp to upper hemisphere so you can't walk "under" the world
+    if (nn.y < 0.25) {
+      nn.y = 0.25;
+      nn.normalize();
+      vel.multiplyScalar(0.3);
+    }
+    player.position.copy(nn.multiplyScalar(R + PLAYER_HEIGHT));
+    vel.projectOnPlane(player.position.clone().normalize());
   }
 
   function updateCamera(dt) {
-    camYaw += (targetYaw - camYaw) * (1 - Math.pow(0.0008, dt));
-    camPitch += (targetPitch - camPitch) * (1 - Math.pow(0.0008, dt));
+    // smooth orbit input
+    camYaw += (targetYaw - camYaw) * (1 - Math.pow(0.0002, dt));
+    camPitch += (targetPitch - camPitch) * (1 - Math.pow(0.0002, dt));
 
     const n = player.position.clone().normalize();
-    // orbit offset in local frame around player
+    // Build camera offset: behind + above, in surface frame
     const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
     const offset = new THREE.Vector3(
       Math.sin(camYaw) * Math.cos(camPitch),
-      Math.sin(camPitch),
+      Math.sin(camPitch) + 0.15,
       Math.cos(camYaw) * Math.cos(camPitch)
     ).multiplyScalar(camDist);
     offset.applyQuaternion(q);
 
     const desired = player.position.clone().add(offset);
-    camera.position.lerp(desired, 1 - Math.pow(0.0002, dt));
-    camera.up.lerp(n, 1 - Math.pow(0.001, dt)).normalize();
-    const look = player.position.clone().add(n.clone().multiplyScalar(0.6));
-    camera.lookAt(look);
+    // critically-ish damped follow
+    camera.position.lerp(desired, 1 - Math.pow(0.00005, dt));
+    camera.up.copy(n);
+    const lookAt = player.position.clone().add(n.clone().multiplyScalar(0.4));
+    camera.lookAt(lookAt);
   }
 
   let near = null;
   function checkNear() {
     near = null;
-    let best = 5;
+    let best = 6.5;
     houses.forEach(h => {
       const d = player.position.distanceTo(h.position);
       if (d < best) { best = d; near = h.userData.name; }
