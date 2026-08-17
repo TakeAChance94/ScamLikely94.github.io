@@ -26,10 +26,12 @@ document.addEventListener('DOMContentLoaded', () => {
     'skills.txt': {
       type: 'file',
       content: [
-        'Web Development',
-        'UI / UX Design',
-        'JavaScript & CSS',
-        'Problem Solving'
+        'Web proxy administration',
+        'Email gateway security',
+        'Python/Bash',
+        'Process automation',
+        'Project Management' 
+        
       ]
     },
     'hobbies.txt': {
@@ -124,29 +126,109 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function runOne(cmd) {
-    const parts = cmd.trim().split(/\s+/);
-    const base = parts[0].toLowerCase();
-    const arg = parts[1] || '';
+  function parseArgs(cmd) {
+    const tokens = cmd.trim().match(/(?:[^\s"]+|"[^"]*")+/g) || [];
+    const flags = new Set();
+    const positionals = [];
+    for (const t of tokens.slice(1)) {
+      if (t === '--') continue;
+      if (t.startsWith('--')) {
+        flags.add(t.slice(2));
+      } else if (t.startsWith('-') && t.length > 1) {
+        for (const ch of t.slice(1)) flags.add(ch);
+      } else {
+        positionals.push(t.replace(/^"|"$/g, ''));
+      }
+    }
+    return { flags, positionals, base: (tokens[0] || '').toLowerCase() };
+  }
 
-    if (base === 'help') {
+  function invalidOption(cmdName, flag) {
+    if (flag.length === 1) {
+      print(`${cmdName}: invalid option -- '${flag}'`, 'error');
+    } else {
+      print(`${cmdName}: unrecognized option '--${flag}'`, 'error');
+    }
+    print(`Try '${cmdName} --help' for more information.`, 'muted');
+  }
+
+  function checkFlags(cmdName, flags, allowed) {
+    for (const f of flags) {
+      if (!allowed.has(f)) {
+        invalidOption(cmdName, f);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function runOne(cmd) {
+    const { base, flags, positionals } = parseArgs(cmd);
+    if (!base) return;
+    const arg = positionals[0] || '';
+
+    if (base === 'help' || ((base === 'ls' || base === 'cd' || base === 'cat' || base === 'clear' || base === 'whoami') && (flags.has('h') || flags.has('help')))) {
+      if (base === 'ls' || (base === 'help' && arg === 'ls')) {
+        print('Usage: ls [OPTION]...', 'info');
+        print('List directory contents.');
+        print('  -a, --all      show all entries (including . and ..)');
+        print('  -l             use long listing format');
+        print('  -h, --help     display this help');
+        return;
+      }
+      if (base === 'cd' || (base === 'help' && arg === 'cd')) {
+        print('Usage: cd [DIR]', 'info');
+        print('Change the current directory.');
+        print('  -h, --help     display this help');
+        return;
+      }
+      if (base === 'cat' || (base === 'help' && arg === 'cat')) {
+        print('Usage: cat [OPTION]... FILE', 'info');
+        print('Concatenate FILE to standard output.');
+        print('  -n, --number   number all output lines');
+        print('  -h, --help     display this help');
+        return;
+      }
+      if (base !== 'help') return;
       print('Available commands:', 'info');
       print('  help              show this message');
-      print('  ls                list directory contents');
+      print('  ls [-a|-l]        list directory contents');
       print('  cd <dir>          change directory');
-      print('  cat <file>        show file contents');
+      print('  cat [-n] <file>   show file contents');
       print('  clear             clear the screen');
       print('  whoami            about me');
       print('');
-      print('Tip: use Tab for autocomplete', 'muted');
+      print('Tip: use Tab for autocomplete · chain with && or ;', 'muted');
+      return;
     }
-    else if (base === 'ls') {
+
+    if (base === 'ls') {
+      if (!checkFlags('ls', flags, new Set(['a', 'all', 'l', 'h', 'help']))) return;
       const dir = fs[cwd];
-      if (dir && dir.type === 'dir') {
-        print(dir.children.join('  '), 'info');
+      if (!dir || dir.type !== 'dir') return;
+      let entries = [...dir.children];
+      if (flags.has('a') || flags.has('all')) {
+        entries = ['.', '..', ...entries];
+      }
+      if (flags.has('l')) {
+        entries.forEach(name => {
+          if (name === '.' || name === '..') {
+            print(`drwxr-xr-x  1 visitor visitor  4.0K  .`);
+            return;
+          }
+          const node = fs[name];
+          if (node && node.type === 'dir') {
+            print(`drwxr-xr-x  1 visitor visitor  4.0K  ${name}`);
+          } else {
+            print(`-rw-r--r--  1 visitor visitor  1.2K  ${name}`);
+          }
+        });
+      } else {
+        print(entries.join('  '), 'info');
       }
     }
     else if (base === 'cd') {
+      if (!checkFlags('cd', flags, new Set(['h', 'help']))) return;
       if (!arg || arg === '~' || arg === '..' || arg === '/') {
         cwd = '~';
         updatePrompt();
@@ -161,29 +243,43 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
     else if (base === 'cat') {
+      if (!checkFlags('cat', flags, new Set(['n', 'number', 'h', 'help']))) return;
       if (!arg) {
         print('cat: missing file operand', 'error');
+        print("Try 'cat --help' for more information.", 'muted');
         return;
       }
       const dir = fs[cwd];
       if (!dir || dir.type !== 'dir' || !dir.children.includes(arg)) {
-        print(`cat: ${arg}: No such file`, 'error');
+        print(`cat: ${arg}: No such file or directory`, 'error');
         return;
       }
       const file = fs[arg];
       if (file && file.type === 'file') {
+        const number = flags.has('n') || flags.has('number');
         if (arg === 'contact_info.txt') {
-          printHTML('Email: <span style="color:#79c0ff">Chance@takeachance.info</span>');
-          printHTML('LinkedIn: <a href="https://www.linkedin.com/in/chancegammill/" target="_blank" style="color:#79c0ff">linkedin.com/in/chancegammill</a>');
+          const lines = [
+            'Email: <span style="color:#79c0ff">Chance@takeachance.info</span>',
+            'LinkedIn: <a href="https://www.linkedin.com/in/chancegammill/" target="_blank" style="color:#79c0ff">linkedin.com/in/chancegammill</a>'
+          ];
+          lines.forEach((line, i) => {
+            if (number) printHTML(`     ${i + 1}  ${line}`);
+            else printHTML(line);
+          });
         } else {
-          file.content.forEach(line => print(line));
+          file.content.forEach((line, i) => {
+            if (number) print(`     ${i + 1}  ${line}`);
+            else print(line);
+          });
         }
       }
     }
     else if (base === 'clear') {
+      if (!checkFlags('clear', flags, new Set(['h', 'help']))) return;
       output.innerHTML = '';
     }
     else if (base === 'whoami') {
+      if (!checkFlags('whoami', flags, new Set(['h', 'help']))) return;
       print('Chance Gammill', 'info');
       print('Digital front door · Type "ls" then "cd" and "cat" to explore');
     }
