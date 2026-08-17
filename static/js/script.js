@@ -30,8 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'Email gateway security',
         'Python/Bash',
         'Process automation',
-        'Project Management' 
-        
+        'Project Management'
       ]
     },
     'hobbies.txt': {
@@ -204,7 +203,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Validate flags first (bash/GNU behavior)
     if (!checkFlags(base, flags, FLAG_SETS[base])) return;
 
-    const wantHelp = flags.has('h') || flags.has('help');
+    // GNU ls/cat: only --help shows help; -h is a real option (ls) or invalid (cat)
+    const wantHelp = flags.has('help') ||
+      (flags.has('h') && base !== 'ls' && base !== 'cat');
     const wantVersion = flags.has('version');
 
     if (wantVersion && base !== 'help') {
