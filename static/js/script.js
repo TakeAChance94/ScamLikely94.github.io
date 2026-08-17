@@ -1,562 +1,345 @@
-document.addEventListener('DOMContentLoaded', () => {
-  const output = document.getElementById('output');
-  const input = document.getElementById('cmd-input');
-  const promptText = document.getElementById('prompt-text');
-  if (!output || !input) return;
-
-  let cwd = '~';
-
-  const fs = {
-    '~': {
-      type: 'dir',
-      children: ['skills', 'hobbies', 'contact']
-    },
-    'skills': {
-      type: 'dir',
-      children: ['skills.txt']
-    },
-    'hobbies': {
-      type: 'dir',
-      children: ['hobbies.txt']
-    },
-    'contact': {
-      type: 'dir',
-      children: ['contact_info.txt']
-    },
-    'skills.txt': {
-      type: 'file',
-      content: [
-        'Web proxy administration',
-        'Email gateway security',
-        'Python/Bash',
-        'Process automation',
-        'Project Management'
-      ]
-    },
-    'hobbies.txt': {
-      type: 'file',
-      content: [
-        'Traveling',
-        'Rock climbing',
-        'Hiking & outdoors',
-        'Learning new things'
-      ]
-    },
-    'contact_info.txt': {
-      type: 'file',
-      content: [
-        'Email: Chance@takeachance.info',
-        'LinkedIn: https://www.linkedin.com/in/chancegammill/'
-      ]
-    }
-  };
-
-  function print(text, className = '') {
-    const div = document.createElement('div');
-    div.className = 'line ' + className;
-    div.textContent = text;
-    output.appendChild(div);
-    output.scrollTop = output.scrollHeight;
+(function () {
+  if (typeof THREE === 'undefined') {
+    document.getElementById('hint').textContent = 'Failed to load Three.js';
+    return;
   }
 
-  function printHTML(html) {
-    const div = document.createElement('div');
-    div.className = 'line';
-    div.innerHTML = html;
-    output.appendChild(div);
-    output.scrollTop = output.scrollHeight;
+  // ---------- Custom toon + rim shader ----------
+  const toonVertex = `
+    varying vec3 vNormal;
+    varying vec3 vWorldPos;
+    void main() {
+      vNormal = normalize(normalMatrix * normal);
+      vec4 world = modelMatrix * vec4(position, 1.0);
+      vWorldPos = world.xyz;
+      gl_Position = projectionMatrix * viewMatrix * world;
+    }
+  `;
+
+  const toonFragment = `
+    uniform vec3 uColor;
+    uniform vec3 uLightDir;
+    uniform float uSteps;
+    varying vec3 vNormal;
+    varying vec3 vWorldPos;
+    void main() {
+      vec3 n = normalize(vNormal);
+      vec3 l = normalize(uLightDir);
+      float ndl = max(dot(n, l), 0.0);
+      // cel steps
+      float cel = floor(ndl * uSteps) / uSteps;
+      cel = mix(0.35, 1.0, cel);
+      // soft rim
+      vec3 viewDir = normalize(cameraPosition - vWorldPos);
+      float rim = 1.0 - max(dot(viewDir, n), 0.0);
+      rim = pow(rim, 2.5) * 0.18;
+      vec3 col = uColor * cel + vec3(rim);
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `;
+
+  function makeToonMaterial(colorHex, steps) {
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        uColor: { value: new THREE.Color(colorHex) },
+        uLightDir: { value: new THREE.Vector3(0.6, 1.0, 0.35).normalize() },
+        uSteps: { value: steps || 3.0 }
+      },
+      vertexShader: toonVertex,
+      fragmentShader: toonFragment
+    });
   }
 
-  function updatePrompt() {
-    promptText.textContent = `visitor@takeachance:${cwd}$`;
+  // Inverted-hull outline
+  function addOutline(mesh, thickness, colorHex) {
+    const outlineMat = new THREE.MeshBasicMaterial({
+      color: colorHex || 0x1a1520,
+      side: THREE.BackSide
+    });
+    const outline = new THREE.Mesh(mesh.geometry, outlineMat);
+    outline.scale.multiplyScalar(thickness || 1.045);
+    mesh.add(outline);
+    return outline;
   }
 
-  function getCompletions(partial) {
-    const parts = partial.trim().split(/\s+/);
-    const base = parts[0] || '';
-    const arg = parts[1] || '';
-    const commands = ['help', 'ls', 'cd', 'cat', 'clear', 'whoami'];
+  // ---------- Scene ----------
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xb8d4e8);
+  scene.fog = new THREE.Fog(0xb8d4e8, 45, 95);
 
-    if (parts.length <= 1) {
-      return commands.filter(c => c.startsWith(base));
-    }
-    if (base === 'cd') {
-      if (cwd === '~') {
-        return ['skills', 'hobbies', 'contact', '..', '~'].filter(d => d.startsWith(arg));
-      }
-      return ['..', '~'].filter(d => d.startsWith(arg));
-    }
-    if (base === 'cat') {
-      const dir = fs[cwd];
-      if (dir && dir.type === 'dir') {
-        return dir.children.filter(f => f.startsWith(arg));
-      }
-    }
-    return [];
+  const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 200);
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  document.body.appendChild(renderer.domElement);
+
+  // Soft ambient fill via hemisphere feel
+  scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+  const sun = new THREE.DirectionalLight(0xfff2dd, 0.9);
+  sun.position.set(20, 30, 15);
+  scene.add(sun);
+
+  // ---------- Planet ----------
+  const R = 14;
+  const planetGeo = new THREE.SphereGeometry(R, 64, 64);
+  const planet = new THREE.Mesh(planetGeo, makeToonMaterial(0x6dbf5a, 4));
+  scene.add(planet);
+  addOutline(planet, 1.012, 0x2a3a28);
+
+  // Path ring on surface
+  const ringGeo = new THREE.RingGeometry(R + 0.02, R + 0.04, 64);
+  const ring = new THREE.Mesh(
+    ringGeo,
+    new THREE.MeshBasicMaterial({ color: 0x8a8a8a, side: THREE.DoubleSide })
+  );
+  // place ring as equatorial path - actually use a torus sitting on surface
+  const path = new THREE.Mesh(
+    new THREE.TorusGeometry(R + 0.05, 0.55, 8, 48),
+    makeToonMaterial(0x8b8b8b, 3)
+  );
+  path.rotation.x = Math.PI / 2;
+  scene.add(path);
+
+  // Grass patches as small spheres on surface
+  function placeOnSphere(lat, lon, r) {
+    const phi = Math.PI / 2 - lat;
+    const theta = lon;
+    return new THREE.Vector3(
+      r * Math.sin(phi) * Math.cos(theta),
+      r * Math.cos(phi),
+      r * Math.sin(phi) * Math.sin(theta)
+    );
   }
 
-  function handleTab() {
-    const val = input.value;
-    const completions = getCompletions(val);
-    if (completions.length === 1) {
-      const parts = val.trim().split(/\s+/);
-      if (parts.length <= 1) {
-        input.value = completions[0] + ' ';
-      } else {
-        parts[parts.length - 1] = completions[0];
-        input.value = parts.join(' ') + (completions[0].endsWith('.txt') ? '' : ' ');
-      }
-    } else if (completions.length > 1) {
-      printHTML(`<span class="prompt">${promptText.textContent}</span> <span class="cmd">${val}</span>`);
-      print(completions.join('  '), 'info');
-    }
+  // ---------- Houses ----------
+  const houses = [];
+  const houseData = [
+    { name: 'skills', color: 0x6ba3d4, roof: 0x8b5a3c, lat: 0.28, lon: -0.95 },
+    { name: 'hobbies', color: 0xe8a06c, roof: 0x5c3a2a, lat: 0.12, lon: 0.25 },
+    { name: 'contact', color: 0x7cbc7c, roof: 0x4a3728, lat: 0.32, lon: 1.05 }
+  ];
+
+  function makeHouse(d) {
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(2.4, 2.6, 2.4),
+      makeToonMaterial(d.color, 3)
+    );
+    body.position.y = 1.3;
+    addOutline(body, 1.05, 0x1a1520);
+    g.add(body);
+
+    const roof = new THREE.Mesh(
+      new THREE.ConeGeometry(1.9, 1.4, 4),
+      makeToonMaterial(d.roof, 3)
+    );
+    roof.position.y = 3.2;
+    roof.rotation.y = Math.PI / 4;
+    addOutline(roof, 1.05, 0x1a1520);
+    g.add(roof);
+
+    const door = new THREE.Mesh(
+      new THREE.BoxGeometry(0.7, 1.3, 0.12),
+      makeToonMaterial(0x3e2a1a, 2)
+    );
+    door.position.set(0, 0.65, 1.22);
+    g.add(door);
+
+    const pos = placeOnSphere(d.lat, d.lon, R);
+    g.position.copy(pos);
+    const up = pos.clone().normalize();
+    g.up.copy(up);
+    g.lookAt(0, 0, 0);
+    g.rotateX(Math.PI);
+    g.userData.name = d.name;
+    scene.add(g);
+    houses.push(g);
+    return g;
+  }
+  houseData.forEach(makeHouse);
+
+  // Trees
+  function makeTree(lat, lon) {
+    const g = new THREE.Group();
+    const trunk = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.15, 0.2, 0.9, 6),
+      makeToonMaterial(0x6b4423, 2)
+    );
+    trunk.position.y = 0.45;
+    g.add(trunk);
+    const leaves = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(0.7, 0),
+      makeToonMaterial(0x3d9b4a, 3)
+    );
+    leaves.position.y = 1.2;
+    addOutline(leaves, 1.06, 0x1a2a18);
+    g.add(leaves);
+    const pos = placeOnSphere(lat, lon, R);
+    g.position.copy(pos);
+    g.lookAt(0, 0, 0);
+    g.rotateX(Math.PI);
+    scene.add(g);
+  }
+  [[0.5, -1.5], [0.45, 1.6], [-0.2, 0.8], [0.6, 0.1], [-0.35, -0.6]].forEach(([la, lo]) => makeTree(la, lo));
+
+  // ---------- Player ----------
+  const player = new THREE.Group();
+  const bodyMat = makeToonMaterial(0x3d2b1f, 3);
+  const skinMat = makeToonMaterial(0xf0c8b0, 2);
+  const hairMat = makeToonMaterial(0x2a1a0e, 2);
+
+  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.35, 0.55, 4, 8), bodyMat);
+  torso.position.y = 1.05;
+  addOutline(torso, 1.08, 0x1a1520);
+  player.add(torso);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 12), skinMat);
+  head.position.y = 1.75;
+  addOutline(head, 1.08, 0x1a1520);
+  player.add(head);
+
+  const bun = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), hairMat);
+  bun.position.set(0, 2.05, -0.08);
+  player.add(bun);
+
+  const stache = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.05, 0.08), hairMat);
+  stache.position.set(0, 1.62, 0.28);
+  player.add(stache);
+
+  const armGeo = new THREE.CapsuleGeometry(0.1, 0.35, 3, 6);
+  const leftArm = new THREE.Mesh(armGeo, bodyMat);
+  leftArm.position.set(-0.48, 1.1, 0);
+  player.add(leftArm);
+  const rightArm = new THREE.Mesh(armGeo, bodyMat);
+  rightArm.position.set(0.48, 1.1, 0);
+  player.add(rightArm);
+
+  const legGeo = new THREE.CapsuleGeometry(0.12, 0.4, 3, 6);
+  const leftLeg = new THREE.Mesh(legGeo, makeToonMaterial(0x1a120c, 2));
+  leftLeg.position.set(-0.18, 0.35, 0);
+  player.add(leftLeg);
+  const rightLeg = new THREE.Mesh(legGeo, makeToonMaterial(0x1a120c, 2));
+  rightLeg.position.set(0.18, 0.35, 0);
+  player.add(rightLeg);
+
+  const start = placeOnSphere(0.08, 0, R + 0.85);
+  player.position.copy(start);
+  scene.add(player);
+
+  // ---------- Controls ----------
+  const keys = {};
+  window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
+  window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+  let walkPhase = 0;
+  const speed = 0.11;
+
+  function stickAndOrient(obj, extraY) {
+    const n = obj.position.clone().normalize();
+    obj.position.copy(n.multiplyScalar(R + (extraY || 0.85)));
+    return n;
   }
 
-  function handleCommand(raw) {
-    const line = raw.trim();
-    if (!line) return;
+  function updatePlayer() {
+    const n = player.position.clone().normalize();
+    const camDir = new THREE.Vector3();
+    camera.getWorldDirection(camDir);
+    camDir.projectOnPlane(n).normalize();
+    const right = new THREE.Vector3().crossVectors(camDir, n).normalize();
 
-    printHTML(`<span class="prompt">${promptText.textContent}</span> <span class="cmd">${raw}</span>`);
+    let moved = false;
+    if (keys['w'] || keys['arrowup']) { player.position.addScaledVector(camDir, speed); moved = true; }
+    if (keys['s'] || keys['arrowdown']) { player.position.addScaledVector(camDir, -speed); moved = true; }
+    if (keys['a'] || keys['arrowleft']) { player.position.addScaledVector(right, -speed); moved = true; }
+    if (keys['d'] || keys['arrowright']) { player.position.addScaledVector(right, speed); moved = true; }
 
-    // Support chaining with && and ;
-    const chain = line.split(/\s*(?:&&|;)\s*/).filter(Boolean);
-    for (const cmd of chain) {
-      runOne(cmd);
-    }
-  }
+    const newN = stickAndOrient(player, 0.85);
 
-  function parseArgs(cmd) {
-    const tokens = cmd.trim().match(/(?:[^\s"]+|"[^"]*")+/g) || [];
-    const flags = new Set();
-    const positionals = [];
-    for (const t of tokens.slice(1)) {
-      if (t === '--') {
-        // rest are positionals — handled by continuing without flag parse
-        continue;
-      }
-      if (t.startsWith('--')) {
-        const name = t.slice(2).split('=')[0];
-        if (name) flags.add(name);
-      } else if (t.startsWith('-') && t.length > 1 && !/^-\d+$/.test(t)) {
-        for (const ch of t.slice(1)) flags.add(ch);
-      } else {
-        positionals.push(t.replace(/^"|"$/g, ''));
-      }
-    }
-    return { flags, positionals, base: (tokens[0] || '').toLowerCase() };
-  }
-
-  function invalidOption(cmdName, flag) {
-    if (flag.length === 1) {
-      print(`${cmdName}: invalid option -- '${flag}'`, 'error');
+    if (moved) {
+      walkPhase += 0.28;
+      leftLeg.rotation.x = Math.sin(walkPhase) * 0.7;
+      rightLeg.rotation.x = Math.sin(walkPhase + Math.PI) * 0.7;
+      leftArm.rotation.x = Math.sin(walkPhase + Math.PI) * 0.4;
+      rightArm.rotation.x = Math.sin(walkPhase) * 0.4;
+      player.up.copy(newN);
+      const look = player.position.clone().add(camDir);
+      player.lookAt(look);
     } else {
-      print(`${cmdName}: unrecognized option '--${flag}'`, 'error');
-    }
-    print(`Try '${cmdName} --help' for more information.`, 'muted');
-  }
-
-  function checkFlags(cmdName, flags, allowed) {
-    for (const f of flags) {
-      if (!allowed.has(f)) {
-        invalidOption(cmdName, f);
-        return false;
-      }
-    }
-    return true;
-  }
-
-  // Real GNU/bash short + common long options
-  const FLAG_SETS = {
-    // GNU ls (coreutils)
-    ls: new Set([
-      'a','A','b','B','c','C','d','D','f','F','g','G','h','H','i','I','k','l','L','m','n','N',
-      'o','p','q','Q','r','R','s','S','t','T','u','U','v','w','x','X','Z','1',
-      'all','almost-all','escape','ignore-backups','directory','dired','classify','no-group',
-      'human-readable','dereference-command-line','inode','kibibytes','dereference','literal',
-      'hide-control-chars','quote-name','reverse','recursive','size','tabsize','context',
-      'help','version'
-    ]),
-    // bash cd builtin
-    cd: new Set(['L','P','e','@','h','help']),
-    // GNU cat
-    cat: new Set([
-      'A','b','e','E','n','s','t','T','u','v',
-      'show-all','number-nonblank','show-ends','number','squeeze-blank',
-      'show-tabs','show-nonprinting','help','version'
-    ]),
-    clear: new Set(['h','help','version','x']),
-    whoami: new Set(['h','help','version']),
-    help: new Set(['h','help'])
-  };
-
-  function runOne(cmd) {
-    const { base, flags, positionals } = parseArgs(cmd);
-    if (!base) return;
-    const arg = positionals[0] || '';
-
-    if (!['help', 'ls', 'cd', 'cat', 'clear', 'whoami'].includes(base)) {
-      print(`command not found: ${base}`, 'error');
-      print('Type "help" for available commands.', 'muted');
-      return;
-    }
-
-    // Validate flags first (bash/GNU behavior)
-    if (!checkFlags(base, flags, FLAG_SETS[base])) return;
-
-    // ONLY --help shows help (GNU). Short -h is never help (ls: human-readable).
-    const wantHelp = flags.has('help');
-    const wantVersion = flags.has('version');
-
-    if (wantVersion && base !== 'help') {
-      print(`${base} (takeachance coreutils) 1.0.0`);
-      return;
-    }
-
-    if (base === 'help' || wantHelp) {
-      if (base === 'ls' || (base === 'help' && arg === 'ls')) {
-        print('Usage: ls [OPTION]... [FILE]...', 'info');
-        print('List directory contents.');
-        print('  -a, --all             do not ignore entries starting with .');
-        print('  -A, --almost-all      do not list implied . and ..');
-        print('  -l                    use a long listing format');
-        print('  -1                    list one file per line');
-        print('  -h, --human-readable  with -l, print sizes like 1K 234M');
-        print('  -r, --reverse         reverse order while sorting');
-        print('  -R, --recursive       list subdirectories recursively');
-        print('  -d, --directory       list directories themselves, not contents');
-        print('  -F, --classify        append indicator (*/=@|) to entries');
-        print('  -p                    append / indicator to directories');
-        print('      --help            display this help');
-        return;
-      }
-      if (base === 'cd' || (base === 'help' && arg === 'cd')) {
-        print('Usage: cd [-L|-P] [dir]', 'info');
-        print('Change the shell working directory.');
-        print('  -L  force symbolic links to follow (default)');
-        print('  -P  use physical directory structure');
-        print('      --help  display this help');
-        return;
-      }
-      if (base === 'cat' || (base === 'help' && arg === 'cat')) {
-        print('Usage: cat [OPTION]... [FILE]...', 'info');
-        print('Concatenate FILE(s) to standard output.');
-        print('  -n, --number             number all output lines');
-        print('  -b, --number-nonblank    number nonempty output lines');
-        print('  -s, --squeeze-blank      suppress repeated empty lines');
-        print('  -E, --show-ends          display $ at end of each line');
-        print('  -A, --show-all           equivalent to -vET');
-        print('      --help               display this help');
-        return;
-      }
-      if (base === 'clear' || base === 'whoami') {
-        print(`Usage: ${base}`, 'info');
-        return;
-      }
-      print('Available commands:', 'info');
-      print('  help              show this message');
-      print('  ls [OPTION]...    list directory contents');
-      print('  cd [DIR]          change directory');
-      print('  cat [OPTION] FILE show file contents');
-      print('  clear             clear the screen');
-      print('  whoami            about me');
-      print('');
-      print('Tip: use Tab for autocomplete · chain with && or ;', 'muted');
-      return;
-    }
-
-    if (base === 'ls') {
-      const showAll = flags.has('a') || flags.has('all');
-      const almostAll = flags.has('A') || flags.has('almost-all');
-      const longFmt = flags.has('l') || flags.has('o') || flags.has('g') || flags.has('n');
-      const onePerLine = flags.has('1');
-      const comma = flags.has('m');
-      const reverse = flags.has('r') || flags.has('reverse');
-      const recursive = flags.has('R') || flags.has('recursive');
-      const classify = flags.has('F') || flags.has('classify') || flags.has('p');
-      const human = flags.has('h') || flags.has('human-readable');
-      const listDirOnly = flags.has('d') || flags.has('directory');
-
-      function isDir(name) {
-        return name === '.' || name === '..' || (fs[name] && fs[name].type === 'dir');
-      }
-
-      function formatName(name) {
-        if (!classify) return name;
-        return isDir(name) ? name + '/' : name;
-      }
-
-      function listEntries(dirKey, entries, label) {
-        if (label) {
-          print('');
-          print(label + ':', 'info');
-        }
-        let names = entries.slice();
-        if (reverse) names.reverse();
-
-        if (longFmt) {
-          names.forEach(name => {
-            const display = formatName(name);
-            if (isDir(name)) {
-              print(`drwxr-xr-x  1 visitor visitor  4.0K  ${display}`);
-            } else {
-              const size = human ? '1.2K' : '1280';
-              print(`-rw-r--r--  1 visitor visitor  ${String(size).padStart(4)}  ${display}`);
-            }
-          });
-        } else if (onePerLine) {
-          names.forEach(name => print(formatName(name), 'info'));
-        } else if (comma) {
-          print(names.map(formatName).join(', '), 'info');
-        } else {
-          print(names.map(formatName).join('  '), 'info');
-        }
-      }
-
-      function entriesFor(dirKey) {
-        const dir = fs[dirKey];
-        if (!dir || dir.type !== 'dir') return [];
-        let entries = dir.children.slice();
-        if (showAll) entries = ['.', '..', ...entries];
-        // almost-all: exclude . and .. only (default already does)
-        return entries;
-      }
-
-      // -d: list directory inode itself, not contents
-      if (listDirOnly) {
-        const name = cwd === '~' ? '.' : cwd;
-        if (longFmt) print(`drwxr-xr-x  1 visitor visitor  4.0K  ${formatName(name)}`);
-        else print(formatName(name), 'info');
-        return;
-      }
-
-      // Target: positional path or cwd
-      const target = arg || cwd;
-      let startKey = cwd;
-      if (arg) {
-        if (arg === '.' || arg === './') startKey = cwd;
-        else if (arg === '..' || arg === '~' || arg === '/') startKey = '~';
-        else if (cwd === '~' && fs[arg] && fs[arg].type === 'dir') startKey = arg;
-        else if (cwd === '~' && fs[arg] && fs[arg].type === 'file') {
-          // ls on a file
-          if (longFmt) {
-            const size = human ? '1.2K' : '1280';
-            print(`-rw-r--r--  1 visitor visitor  ${String(size).padStart(4)}  ${formatName(arg)}`);
-          } else print(formatName(arg), 'info');
-          return;
-        } else {
-          print(`ls: cannot access '${arg}': No such file or directory`, 'error');
-          return;
-        }
-      }
-
-      // -R recursive (distinct from -r reverse)
-      if (recursive) {
-        const queue = [startKey];
-        let first = true;
-        while (queue.length) {
-          const key = queue.shift();
-          const label = first && key === startKey && startKey === cwd
-            ? null
-            : (key === '~' ? '.' : key);
-          first = false;
-          const entries = entriesFor(key);
-          listEntries(key, entries, label);
-          // enqueue subdirectories (not . or ..)
-          for (const name of entriesFor(key)) {
-            if (name === '.' || name === '..') continue;
-            if (fs[name] && fs[name].type === 'dir') {
-              // only top-level dirs exist in this FS and live under ~
-              if (key === '~') queue.push(name);
-            }
-          }
-        }
-        return;
-      }
-
-      // non-recursive
-      listEntries(startKey, entriesFor(startKey), null);
-    }
-
-    else if (base === 'cd') {
-      // -L / -P accepted (no-op in this simple FS)
-      if (!arg || arg === '~' || arg === '..' || arg === '/') {
-        cwd = '~';
-        updatePrompt();
-      } else if (cwd === '~' && fs[arg] && fs[arg].type === 'dir') {
-        cwd = arg;
-        updatePrompt();
-      } else if ((arg === '..' || arg === '~')) {
-        cwd = '~';
-        updatePrompt();
-      } else {
-        print(`bash: cd: ${arg}: No such file or directory`, 'error');
-      }
-    }
-    else if (base === 'cat') {
-      if (!arg) {
-        print('cat: missing file operand', 'error');
-        print("Try 'cat --help' for more information.", 'muted');
-        return;
-      }
-      // support multiple files
-      const files = positionals.length ? positionals : [arg];
-      for (const f of files) {
-        const dir = fs[cwd];
-        if (!dir || dir.type !== 'dir' || !dir.children.includes(f)) {
-          print(`cat: ${f}: No such file or directory`, 'error');
-          continue;
-        }
-        const file = fs[f];
-        if (!file || file.type !== 'file') continue;
-
-        let lines;
-        if (f === 'contact_info.txt') {
-          lines = [
-            { html: true, text: 'Email: <span style="color:#79c0ff">Chance@takeachance.info</span>' },
-            { html: true, text: 'LinkedIn: <a href="https://www.linkedin.com/in/chancegammill/" target="_blank" style="color:#79c0ff">linkedin.com/in/chancegammill</a>' }
-          ];
-        } else {
-          lines = file.content.map(t => ({ html: false, text: t }));
-        }
-
-        // -s squeeze blank
-        if (flags.has('s') || flags.has('squeeze-blank')) {
-          const squeezed = [];
-          let lastBlank = false;
-          for (const line of lines) {
-            const blank = line.text === '';
-            if (blank && lastBlank) continue;
-            squeezed.push(line);
-            lastBlank = blank;
-          }
-          lines = squeezed;
-        }
-
-        const numberAll = flags.has('n') || flags.has('number');
-        const numberNonblank = flags.has('b') || flags.has('number-nonblank');
-        const showEnds = flags.has('E') || flags.has('show-ends') || flags.has('A') || flags.has('show-all') || flags.has('e');
-        let n = 0;
-        lines.forEach(line => {
-          let text = line.text;
-          if (showEnds) text = text + '$';
-          if (numberAll || (numberNonblank && line.text !== '')) {
-            n += 1;
-            const prefix = String(n).padStart(6, ' ') + '  ';
-            if (line.html) printHTML(prefix + text);
-            else print(prefix + text);
-          } else {
-            if (line.html) printHTML(text);
-            else print(text);
-          }
-        });
-      }
-    }
-    else if (base === 'clear') {
-      output.innerHTML = '';
-    }
-    else if (base === 'whoami') {
-      print('Chance Gammill', 'info');
-      print('Digital front door · Type "ls" then "cd" and "cat" to explore');
+      leftLeg.rotation.x = rightLeg.rotation.x = leftArm.rotation.x = rightArm.rotation.x = 0;
     }
   }
 
-  input.addEventListener('keydown', e => {
-    if (e.key === 'Enter') {
-      handleCommand(input.value);
-      input.value = '';
-    } else if (e.key === 'Tab') {
-      e.preventDefault();
-      handleTab();
+  function updateCamera() {
+    const n = player.position.clone().normalize();
+    const behind = new THREE.Vector3();
+    player.getWorldDirection(behind);
+    behind.multiplyScalar(-9);
+    const desired = player.position.clone()
+      .add(n.clone().multiplyScalar(4.5))
+      .add(behind);
+    camera.position.lerp(desired, 0.07);
+    camera.up.copy(n);
+    camera.lookAt(player.position);
+  }
+
+  // ---------- Interaction ----------
+  let near = null;
+  function checkNear() {
+    near = null;
+    houses.forEach(h => {
+      if (player.position.distanceTo(h.position) < 5.2) near = h.userData.name;
+    });
+    const hint = document.getElementById('hint');
+    hint.textContent = near
+      ? `Press E to enter ${near}`
+      : 'WASD / arrows to move · Approach a house & press E';
+  }
+
+  function openPanel(id) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    const el = document.getElementById(id);
+    if (el) el.classList.add('active');
+  }
+  function closePanels() {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  }
+
+  window.addEventListener('keydown', e => {
+    if (e.key.toLowerCase() === 'e' && near) openPanel(near);
+    if (e.key === 'Escape') closePanels();
+  });
+  document.querySelectorAll('.close').forEach(b => b.addEventListener('click', closePanels));
+
+  const ray = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
+  window.addEventListener('click', e => {
+    if (e.target.closest('.panel')) return;
+    mouse.x = (e.clientX / innerWidth) * 2 - 1;
+    mouse.y = -(e.clientY / innerHeight) * 2 + 1;
+    ray.setFromCamera(mouse, camera);
+    const hits = ray.intersectObjects(houses, true);
+    if (hits.length) {
+      let o = hits[0].object;
+      while (o && !o.userData.name) o = o.parent;
+      if (o && o.userData.name) openPanel(o.userData.name);
     }
   });
 
-  document.addEventListener('click', () => input.focus());
+  window.addEventListener('resize', () => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
 
-  // Friendly ASCII arts
-  const arts = [
-`           ,-.
-          .:\` \`-.
-          |:|  __ b
-           \`;-(
-          ,'  |
-         ( \\|||_
-  ,-----(.-''--\`\`-------.
- /_______\`'______________\\
-/                          \\`,
-
-`    ___
-   //_\\\\_
- ."\\\\    ".
-/          \\
-|           \\_
-|         ,--.-.)
- \\       /  o \\o\\
- /\\/\\   \\    /_/
-  (_.   \`--'  __)
-   |     .-'  \\
-   |  .-'.     )
-   | (  _/--.-'
-   |  \`.___.'
-         (`,
-
-`           __..--''\`\`---....___   _..._    __
- /// //_.-'    .-/";  \`        \`\`<._  \`\`.''_ \`. / // /
-///_.-' _..--.'_    \\                    \`( ) ) // //
-/ (_..-' // (< _     ;_..__               ; \`' / ///
- / // // //  \`-._,_)' // / \`\`--...____..-' /// / //`,
-
-`            .'\\   /\`.
-         .'.-.\`-'.-.\`.
-    ..._:   .-. .-.   :_...
-  .'    '-.(o ) (o ).-'    \`.
- :  _    _ _\`~(_)~\`_ _    _  :
-:  /:   ' .-=_   _=-. \`   ;\\  :
-:   :|-.._  '     \`  _..-|:   :
- :   \`:| |\`:-:-.-:-:'| |:'   :
-  \`.   \`.| | | | | | |.'   .'
-    \`.   \`-:_| | |_:-'   .'
-      \`-._   \`\`\`\`    _.-'
-          \`\`-------''`,
-
-` /^ ^\\
-/ 0 0 \\
-V\\ Y /V
- / - \\
- |    \\
- || (__V`,
-
-`                             ___-------___
-                         _-~~             ~~-_
-                      _-~                    /~-_
-   /^\\__/^\\         /~  \\                   /    \\
- /|  O|| O|        /      \\_______________/        \\
-| |___||__|      /       /                \\          \\
-|          \\    /      /                    \\          \\
-|   (_______) /______/                        \\_________ \\
-|         / /         \\                      /            \\
- \\         \\^\\\\         \\                  /               \\     /
-   \\         ||           \\______________/      _-_       //\\__//
-     \\       ||------_-~~-_ ------------- \\ --/~   ~\\    || __/
-       ~-----||====/~     |==================|       |/~~~~~
-        (_(__/  ./     /                    \\_\\      \\.
-               (_(___/                         \\_____)_)`
-  ];
-
-  // Boot
-  input.disabled = true;
-  print('Initializing session...');
-  setTimeout(() => {
-    print('Loading profile...');
-    setTimeout(() => {
-      print('');
-      printHTML('Hello, I am <span style="color:#3B6EA5">Chance Gammill</span>. Welcome to my site.');
-      print('Feel free to look around or type \'help\' if you need a list of available commands.');
-      print('');
-      const art = arts[Math.floor(Math.random() * arts.length)];
-      art.split('\n').forEach(line => print(line, 'info'));
-      print('');
-      input.disabled = false;
-      input.focus();
-    }, 250);
-  }, 250);
-});
+  // ---------- Loop ----------
+  function loop() {
+    requestAnimationFrame(loop);
+    updatePlayer();
+    updateCamera();
+    checkNear();
+    // subtle planet spin feel via light direction is enough
+    renderer.render(scene, camera);
+  }
+  loop();
+})();
