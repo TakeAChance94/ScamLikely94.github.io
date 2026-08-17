@@ -307,104 +307,79 @@
   }
 
   function updatePlayer(dt) {
-    const n = player.position.clone().normalize();
+    // Surface normal
+    let n = player.position.clone().normalize();
 
-    // Camera-relative tangent directions
-    const view = new THREE.Vector3();
-    camera.getWorldDirection(view);
-    view.projectOnPlane(n);
-    if (view.lengthSq() < 1e-8) {
-      // fallback if looking straight down/up
-      view.set(0, 0, 1).applyQuaternion(
-        new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), n)
-      ).projectOnPlane(n);
+    // Camera-relative axes on the tangent plane
+    const fwd = new THREE.Vector3();
+    camera.getWorldDirection(fwd);
+    fwd.projectOnPlane(n);
+    if (fwd.lengthSq() < 1e-8) {
+      fwd.set(0, 0, -1);
+      const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
+      fwd.applyQuaternion(q).projectOnPlane(n);
     }
-    view.normalize();
-    const right = new THREE.Vector3().crossVectors(view, n).normalize();
+    fwd.normalize();
+    const right = new THREE.Vector3().crossVectors(fwd, n).normalize();
 
+    // Input
     let ix = 0, iz = 0;
     if (keys['w'] || keys['arrowup']) iz += 1;
     if (keys['s'] || keys['arrowdown']) iz -= 1;
     if (keys['a'] || keys['arrowleft']) ix -= 1;
     if (keys['d'] || keys['arrowright']) ix += 1;
 
-    const wish = new THREE.Vector3().addScaledVector(view, iz).addScaledVector(right, ix);
-    const moving = wish.lengthSq() > 1e-6;
+    if (ix !== 0 || iz !== 0) {
+      const move = new THREE.Vector3().addScaledVector(fwd, iz).addScaledVector(right, ix).normalize();
 
-    if (moving) {
-      wish.normalize();
-      // Smooth velocity toward wish (units: world speed along surface)
-      const targetVel = wish.multiplyScalar(MAX_SPEED);
-      vel.lerp(targetVel, 1 - Math.pow(0.00001, dt));
-    } else {
-      // Stronger stop when no input
-      vel.lerp(new THREE.Vector3(0, 0, 0), 1 - Math.pow(0.0000001, dt));
-      if (vel.lengthSq() < 1e-8) vel.set(0, 0, 0);
-    }
-
-    // --- Geodesic step on the sphere (correct planet walking) ---
-    const speed = vel.length();
-    if (speed > 1e-6) {
-      const moveDir = vel.clone().normalize();
-      // axis of rotation = normal × moveDir
-      const axis = new THREE.Vector3().crossVectors(n, moveDir);
+      // Direct geodesic step — no velocity stack
+      const axis = new THREE.Vector3().crossVectors(n, move);
       if (axis.lengthSq() > 1e-8) {
         axis.normalize();
-        // arc length ≈ speed; angle = arc / radius
-        const angle = (speed * 60 * dt) / (R + PLAYER_HEIGHT);
-        player.position.applyAxisAngle(axis, angle);
+        const angularSpeed = 1.35; // radians / second
+        player.position.applyAxisAngle(axis, angularSpeed * dt);
       }
-    }
 
-    // Re-stick precisely
-    let nn = player.position.clone().normalize();
-    // Soft wall near equator — keep playable area on top
-    if (nn.y < 0.2) {
-      nn.y = 0.2;
-      nn.normalize();
-      vel.multiplyScalar(0.5);
-    }
-    player.position.copy(nn.clone().multiplyScalar(R + PLAYER_HEIGHT));
+      // Stick to sphere
+      n = player.position.clone().normalize();
+      if (n.y < 0.18) { n.y = 0.18; n.normalize(); }
+      player.position.copy(n.clone().multiplyScalar(R + PLAYER_HEIGHT));
 
-    // Keep velocity tangent for next frame
-    vel.projectOnPlane(nn);
-
-    // Orient body to face velocity (or last wish)
-    if (speed > 0.01) {
-      const face = vel.clone().normalize();
-      const x = new THREE.Vector3().crossVectors(nn, face).normalize();
-      const z = new THREE.Vector3().crossVectors(x, nn).normalize();
-      const tq = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, nn, z));
-      player.quaternion.slerp(tq, 1 - Math.pow(0.00001, dt));
+      // Face move dir
+      const face = move.projectOnPlane(n).normalize();
+      if (face.lengthSq() > 1e-6) {
+        const x = new THREE.Vector3().crossVectors(n, face).normalize();
+        const z = new THREE.Vector3().crossVectors(x, n).normalize();
+        const tq = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, n, z));
+        player.quaternion.slerp(tq, Math.min(1, 12 * dt));
+      }
     } else {
-      // still align "up" with surface when idle
-      const upQ = new THREE.Quaternion().setFromUnitVectors(
-        new THREE.Vector3(0, 1, 0).applyQuaternion(player.quaternion).normalize(),
-        nn
-      );
-      player.quaternion.premultiply(upQ);
+      // Idle: stay stuck, keep feet planted
+      n = player.position.clone().normalize();
+      player.position.copy(n.multiplyScalar(R + PLAYER_HEIGHT));
     }
   }
 
   function updateCamera(dt) {
-    camYaw += (targetYaw - camYaw) * (1 - Math.pow(0.0001, dt));
-    camPitch += (targetPitch - camPitch) * (1 - Math.pow(0.0001, dt));
+    // Soft-follow mouse orbit
+    camYaw += (targetYaw - camYaw) * Math.min(1, 10 * dt);
+    camPitch += (targetPitch - camPitch) * Math.min(1, 10 * dt);
 
     const n = player.position.clone().normalize();
-
-    // Orbit in the tangent frame, always "above" the surface a bit
     const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
+
+    // Offset: behind + above in surface frame
     const local = new THREE.Vector3(
       Math.sin(camYaw) * Math.cos(camPitch),
       Math.sin(camPitch),
       Math.cos(camYaw) * Math.cos(camPitch)
     );
     const offset = local.multiplyScalar(camDist).applyQuaternion(q);
-
     const desired = player.position.clone().add(offset);
-    camera.position.lerp(desired, 1 - Math.pow(0.00002, dt));
+
+    camera.position.lerp(desired, Math.min(1, 8 * dt));
     camera.up.copy(n);
-    camera.lookAt(player.position.clone().add(n.clone().multiplyScalar(0.5)));
+    camera.lookAt(player.position.clone().add(n.clone().multiplyScalar(0.45)));
   }
 
   let near = null;
