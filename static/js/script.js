@@ -223,6 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
         print('  -1                    list one file per line');
         print('  -h, --human-readable  with -l, print sizes like 1K 234M');
         print('  -r, --reverse         reverse order while sorting');
+        print('  -R, --recursive       list subdirectories recursively');
         print('  -d, --directory       list directories themselves, not contents');
         print('  -F, --classify        append indicator (*/=@|) to entries');
         print('  -p                    append / indicator to directories');
@@ -265,64 +266,118 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (base === 'ls') {
-      const dir = fs[cwd];
-      if (!dir || dir.type !== 'dir') return;
+      const showAll = flags.has('a') || flags.has('all');
+      const almostAll = flags.has('A') || flags.has('almost-all');
+      const longFmt = flags.has('l') || flags.has('o') || flags.has('g') || flags.has('n');
+      const onePerLine = flags.has('1');
+      const comma = flags.has('m');
+      const reverse = flags.has('r') || flags.has('reverse');
+      const recursive = flags.has('R') || flags.has('recursive');
+      const classify = flags.has('F') || flags.has('classify') || flags.has('p');
+      const human = flags.has('h') || flags.has('human-readable');
+      const listDirOnly = flags.has('d') || flags.has('directory');
 
-      // -d: list directory itself
-      if (flags.has('d') || flags.has('directory')) {
-        if (flags.has('l')) {
-          print(`drwxr-xr-x  1 visitor visitor  4.0K  ${cwd === '~' ? '.' : cwd}`);
+      function isDir(name) {
+        return name === '.' || name === '..' || (fs[name] && fs[name].type === 'dir');
+      }
+
+      function formatName(name) {
+        if (!classify) return name;
+        return isDir(name) ? name + '/' : name;
+      }
+
+      function listEntries(dirKey, entries, label) {
+        if (label) {
+          print('');
+          print(label + ':', 'info');
+        }
+        let names = entries.slice();
+        if (reverse) names.reverse();
+
+        if (longFmt) {
+          names.forEach(name => {
+            const display = formatName(name);
+            if (isDir(name)) {
+              print(`drwxr-xr-x  1 visitor visitor  4.0K  ${display}`);
+            } else {
+              const size = human ? '1.2K' : '1280';
+              print(`-rw-r--r--  1 visitor visitor  ${String(size).padStart(4)}  ${display}`);
+            }
+          });
+        } else if (onePerLine) {
+          names.forEach(name => print(formatName(name), 'info'));
+        } else if (comma) {
+          print(names.map(formatName).join(', '), 'info');
         } else {
-          print(cwd === '~' ? '.' : cwd, 'info');
+          print(names.map(formatName).join('  '), 'info');
+        }
+      }
+
+      function entriesFor(dirKey) {
+        const dir = fs[dirKey];
+        if (!dir || dir.type !== 'dir') return [];
+        let entries = dir.children.slice();
+        if (showAll) entries = ['.', '..', ...entries];
+        // almost-all: exclude . and .. only (default already does)
+        return entries;
+      }
+
+      // -d: list directory inode itself, not contents
+      if (listDirOnly) {
+        const name = cwd === '~' ? '.' : cwd;
+        if (longFmt) print(`drwxr-xr-x  1 visitor visitor  4.0K  ${formatName(name)}`);
+        else print(formatName(name), 'info');
+        return;
+      }
+
+      // Target: positional path or cwd
+      const target = arg || cwd;
+      let startKey = cwd;
+      if (arg) {
+        if (arg === '.' || arg === './') startKey = cwd;
+        else if (arg === '..' || arg === '~' || arg === '/') startKey = '~';
+        else if (cwd === '~' && fs[arg] && fs[arg].type === 'dir') startKey = arg;
+        else if (cwd === '~' && fs[arg] && fs[arg].type === 'file') {
+          // ls on a file
+          if (longFmt) {
+            const size = human ? '1.2K' : '1280';
+            print(`-rw-r--r--  1 visitor visitor  ${String(size).padStart(4)}  ${formatName(arg)}`);
+          } else print(formatName(arg), 'info');
+          return;
+        } else {
+          print(`ls: cannot access '${arg}': No such file or directory`, 'error');
+          return;
+        }
+      }
+
+      // -R recursive (distinct from -r reverse)
+      if (recursive) {
+        const queue = [startKey];
+        let first = true;
+        while (queue.length) {
+          const key = queue.shift();
+          const label = first && key === startKey && startKey === cwd
+            ? null
+            : (key === '~' ? '.' : key);
+          first = false;
+          const entries = entriesFor(key);
+          listEntries(key, entries, label);
+          // enqueue subdirectories (not . or ..)
+          for (const name of entriesFor(key)) {
+            if (name === '.' || name === '..') continue;
+            if (fs[name] && fs[name].type === 'dir') {
+              // only top-level dirs exist in this FS and live under ~
+              if (key === '~') queue.push(name);
+            }
+          }
         }
         return;
       }
 
-      let entries = [...dir.children];
-      const showAll = flags.has('a') || flags.has('all');
-      const almostAll = flags.has('A') || flags.has('almost-all');
-      if (showAll) {
-        entries = ['.', '..', ...entries];
-      } else if (almostAll) {
-        // almost-all: no . and .., same as default here (no hidden files)
-      }
-
-      if (flags.has('r') || flags.has('reverse')) {
-        entries = entries.slice().reverse();
-      }
-
-      const classify = flags.has('F') || flags.has('classify') || flags.has('p');
-      const formatName = (name) => {
-        if (!classify) return name;
-        if (name === '.' || name === '..') return name + '/';
-        const node = fs[name];
-        if (node && node.type === 'dir') return name + '/';
-        return name;
-      };
-
-      if (flags.has('l') || flags.has('o') || flags.has('g') || flags.has('n')) {
-        entries.forEach(name => {
-          const display = formatName(name);
-          if (name === '.' || name === '..') {
-            print(`drwxr-xr-x  1 visitor visitor  4.0K  ${display}`);
-            return;
-          }
-          const node = fs[name];
-          if (node && node.type === 'dir') {
-            print(`drwxr-xr-x  1 visitor visitor  4.0K  ${display}`);
-          } else {
-            const size = flags.has('h') || flags.has('human-readable') ? '1.2K' : '1280';
-            print(`-rw-r--r--  1 visitor visitor  ${size.padStart(4)}  ${display}`);
-          }
-        });
-      } else if (flags.has('1')) {
-        entries.forEach(name => print(formatName(name), 'info'));
-      } else if (flags.has('m')) {
-        print(entries.map(formatName).join(', '), 'info');
-      } else {
-        print(entries.map(formatName).join('  '), 'info');
-      }
+      // non-recursive
+      listEntries(startKey, entriesFor(startKey), null);
     }
+
     else if (base === 'cd') {
       // -L / -P accepted (no-op in this simple FS)
       if (!arg || arg === '~' || arg === '..' || arg === '/') {
