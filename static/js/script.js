@@ -535,7 +535,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     else if (base === 'whoami') {
       print('Chance Gammill', 'info');
-      print('Digital front door · Type "ls" then "cd" and "cat" to explore');
+      print('Information Security Engineer · Type help if you need assistance');
     }
   }
 
