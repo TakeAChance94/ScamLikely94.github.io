@@ -38,8 +38,8 @@ document.addEventListener('DOMContentLoaded', () => {
     'skills.txt': {
       type: 'file',
       content: [
-        'Proofpoint email security administration',
-        'Blue Coat / web proxy administration',
+        'Email security administration',
+        'Web proxy administration',
         'Security incident investigation & response',
         'Enterprise web & email infrastructure',
         'Security playbooks & standardized procedures',
