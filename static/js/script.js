@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const fs = {
     '~': {
       type: 'dir',
-      children: ['skills', 'hobbies', 'contact']
+      children: ['skills', 'hobbies', 'contact', 'certificates', 'jobs', 'education']
     },
     'skills': {
       type: 'dir',
@@ -23,14 +23,31 @@ document.addEventListener('DOMContentLoaded', () => {
       type: 'dir',
       children: ['contact_info.txt']
     },
+    'certificates': {
+      type: 'dir',
+      children: ['certificates.txt']
+    },
+    'jobs': {
+      type: 'dir',
+      children: ['jobs.txt']
+    },
+    'education': {
+      type: 'dir',
+      children: ['education.txt']
+    },
     'skills.txt': {
       type: 'file',
       content: [
-        'Web proxy administration',
-        'Email gateway security',
-        'Python/Bash',
-        'Process automation',
-        'Project Management'
+        'Proofpoint email security administration',
+        'Blue Coat / web proxy administration',
+        'Security incident investigation & response',
+        'Enterprise web & email infrastructure',
+        'Security playbooks & standardized procedures',
+        'Workflow automation (Python / Bash)',
+        'Cross-functional security standards',
+        'Technical troubleshooting (software & hardware)',
+        'Customer identity & access management (CIAM)',
+        'Coaching, mentoring & performance feedback'
       ]
     },
     'hobbies.txt': {
@@ -46,7 +63,66 @@ document.addEventListener('DOMContentLoaded', () => {
       type: 'file',
       content: [
         'Email: Chance@takeachance.info',
-        'LinkedIn: https://www.linkedin.com/in/chancegammill/'
+        'LinkedIn: https://www.linkedin.com/in/chancegammill/',
+        'Location: San Antonio, TX'
+      ]
+    },
+    'certificates.txt': {
+      type: 'file',
+      content: [
+        'GIAC Defensible Security Architecture (GDSA) — Sep 2025',
+        '  Analyst ID: 248488',
+        '',
+        'CompTIA Security+ — Mar 2022',
+        '  ID: FFBYGEMH8CF4QECY',
+        '',
+        'CompTIA Network+ — Aug 2022',
+        '  ID: YN5SHPB5L2RE1695',
+        '',
+        'CompTIA A+ — Jan 2022',
+        '  ID: B9GRSPKP7K11QT3C'
+      ]
+    },
+
+
+
+    'jobs.txt': {
+      type: 'file',
+      content: [
+        '┌──────────────────────┬────────────────────────────────────────┬─────────────────────┐',
+        '│ Company              │ Role                                   │ Dates               │',
+        '├──────────────────────┼────────────────────────────────────────┼─────────────────────┤',
+        '│ USAA                 │ Information Security Engineer II       │ 2024 – 2026         │',
+        '│                      │ Information Security Engineer I        │ 2026 – Present      │',
+        '│                      │ San Antonio, TX                        │                     │',
+        '├──────────────────────┼────────────────────────────────────────┼─────────────────────┤',
+        '│ Charter Communications│ Technical Support Specialist Rep 3   │ Dec 2016 – Jun 2023 │',
+        '│                      │ San Antonio, TX                        │                     │',
+        '├──────────────────────┼────────────────────────────────────────┼─────────────────────┤',
+        '│ Arris Group          │ Performance Coach                      │ Jan 2016 – Nov 2016 │',
+        '│                      │ San Antonio, TX                        │                     │',
+        '└──────────────────────┴────────────────────────────────────────┴─────────────────────┘',
+        '',
+        'USAA — Highlights',
+        '  • Proofpoint email security & Blue Coat proxy administration',
+        '  • Security incident investigation and operational recovery',
+        '  • Playbooks, automation (Python/Bash), and security standards',
+        '',
+        'Charter — Highlights',
+        '  • Complex Spectrum hardware/software troubleshooting',
+        '  • Home network security guidance and CIAM support',
+        '',
+        'Arris — Highlights',
+        '  • Agent coaching, escalations, KPI-based feedback models'
+      ]
+    },
+    'education.txt': {
+      type: 'file',
+      content: [
+        'Texas A&M University – San Antonio',
+        'B.B.A. Computer Information Systems',
+        'Concentration: Information Assurance & Security',
+        'Fall 2023 · GPA 3.9'
       ]
     }
   };
@@ -82,7 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (base === 'cd') {
       if (cwd === '~') {
-        return ['skills', 'hobbies', 'contact', '..', '~'].filter(d => d.startsWith(arg));
+        return ['skills', 'hobbies', 'contact', 'certificates', 'jobs', 'education', '..', '~'].filter(d => d.startsWith(arg));
       }
       return ['..', '~'].filter(d => d.startsWith(arg));
     }
