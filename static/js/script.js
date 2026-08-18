@@ -115,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'Arris — Highlights',
         '  • Agent coaching, escalations, KPI-based feedback models'
       ]
-    }
+    },
     'education.txt': {
       type: 'file',
       content: [
