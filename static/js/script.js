@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const fs = {
     '~': {
       type: 'dir',
-      children: ['skills', 'hobbies', 'contact', 'certificates', 'careers', 'education']
+      children: ['skills', 'hobbies', 'contact', 'certificates', 'career', 'education']
     },
     'skills': {
       type: 'dir',
@@ -27,9 +27,9 @@ document.addEventListener('DOMContentLoaded', () => {
       type: 'dir',
       children: ['certificates.txt']
     },
-    'careers': {
+    'career': {
       type: 'dir',
-      children: ['careers.txt']
+      children: ['career.txt']
     },
     'education': {
       type: 'dir',
@@ -86,33 +86,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-    'careers.txt': {
+    'career.txt': {
       type: 'file',
       content: [
-        'COMPANY                      ROLE                                  DATES               ',
-        '---------------------------  ------------------------------------  --------------------',
-        'USAA                         Information Security Engineer II      2024 – 2026         ',
-        '                             Information Security Engineer I       2026 – Present      ',
-        '                             San Antonio, TX                                           ',
+        'CAREER HISTORY',
+        '══════════════════════════════════════════════════════════',
         '',
-        'Charter Communications       Technical Support Specialist Rep 3    Dec 2016 – Jun 2023 ',
-        '                             San Antonio, TX                                           ',
+        'USAA · San Antonio, TX',
+        '──────────────────────────────────────────────────────────',
+        '  Information Security Engineer I        2026 – Present',
+        '  Information Security Engineer II       2024 – 2026',
         '',
-        'Arris Group                  Performance Coach                     Jan 2016 – Nov 2016 ',
-        '                             San Antonio, TX                                           ',
-        '',
-        '---------------------------  ------------------------------------  --------------------',
-        '',
-        'USAA — Highlights',
         '  • Proofpoint email security & Blue Coat proxy administration',
         '  • Security incident investigation and operational recovery',
         '  • Playbooks, automation (Python/Bash), and security standards',
         '',
-        'Charter — Highlights',
+        '',
+        'Charter Communications · San Antonio, TX',
+        '──────────────────────────────────────────────────────────',
+        '  Technical Support Specialist Rep 3      Dec 2016 – Jun 2023',
+        '',
         '  • Complex Spectrum hardware/software troubleshooting',
         '  • Home network security guidance and CIAM support',
         '',
-        'Arris — Highlights',
+        '',
+        'Arris Group · San Antonio, TX',
+        '──────────────────────────────────────────────────────────',
+        '  Performance Coach                       Jan 2016 – Nov 2016',
+        '',
         '  • Agent coaching, escalations, KPI-based feedback models'
       ]
     },
@@ -158,7 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (base === 'cd') {
       if (cwd === '~') {
-        return ['skills', 'hobbies', 'contact', 'certificates', 'careers', 'education', '..', '~'].filter(d => d.startsWith(arg));
+        return ['skills', 'hobbies', 'contact', 'certificates', 'career', 'education', '..', '~'].filter(d => d.startsWith(arg));
       }
       return ['..', '~'].filter(d => d.startsWith(arg));
     }
