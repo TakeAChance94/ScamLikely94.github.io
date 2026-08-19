@@ -97,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
         '  Information Security Engineer I        2026 – Present',
         '  Information Security Engineer II       2024 – 2026',
         '',
-        '  • Proofpoint email security & Blue Coat proxy administration',
+        '  • Email security & Web proxy administration',
         '  • Security incident investigation and operational recovery',
         '  • Playbooks, automation (Python/Bash), and security standards',
         '',
