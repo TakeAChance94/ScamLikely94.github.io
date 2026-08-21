@@ -551,27 +551,120 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.addEventListener('click', () => input.focus());
 
-  // Established ASCII art library (asciiart.eu DB via jsDelivr) — random piece each load
-  const ASCII_DB_URL = 'https://cdn.jsdelivr.net/gh/asweigart/asciiartjsondb@main/asciiartdb-asciiarteu.json';
+  // Static picture arts + figlet phrase banners (random mix each load)
+  const pictureArts = [
+`           ,-.
+          .:\` \`-.
+          |:|  __ b
+           \`;-(
+          ,'  |
+         ( \\|||_
+  ,-----(.-''--\`\`-------.
+ /_______\`'______________\\
+/                          \\`,
 
-  async function loadRandomAsciiArt() {
-    try {
-      const res = await fetch(ASCII_DB_URL);
-      if (!res.ok) throw new Error('fetch failed');
-      const db = await res.json();
-      // Prefer multi-line "pictures" that fit a terminal
-      const pics = db.filter(e =>
-        e && typeof e.art === 'string' &&
-        e.height >= 5 && e.height <= 22 &&
-        e.width >= 10 && e.width <= 72
-      );
-      const pool = pics.length ? pics : db.filter(e => e && e.art);
-      if (!pool.length) return null;
-      const pick = pool[Math.floor(Math.random() * pool.length)];
-      return pick.art.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
-    } catch (e) {
-      return null;
+`    ___
+   //_\\\\_
+ ."\\\\    ".
+/          \\
+|           \\_
+|         ,--.-.)
+ \\       /  o \\o\\
+ /\\/\\   \\    /_/
+  (_.   \`--'  __)
+   |     .-'  \\
+   |  .-'.     )
+   | (  _/--.-'
+   |  \`.___.'
+         (`,
+
+`           __..--''\`\`---....___   _..._    __
+ /// //_.-'    .-/";  \`        \`\`<._  \`\`.''_ \`. / // /
+///_.-' _..--.'_    \\                    \`( ) ) // //
+/ (_..-' // (< _     ;_..__               ; \`' / ///
+ / // // //  \`-._,_)' // / \`\`--...____..-' /// / //`,
+
+`            .'\\   /\`.
+         .'.-.\`-'.-.\`.
+    ..._:   .-. .-.   :_...
+  .'    '-.(o ) (o ).-'    \`.
+ :  _    _ _\`~(_)~\`_ _    _  :
+:  /:   ' .-=_   _=-. \`   ;\\  :
+:   :|-.._  '     \`  _..-|:   :
+ :   \`:| |\`:-:-.-:-:'| |:'   :
+  \`.   \`.| | | | | | |.'   .'
+    \`.   \`-:_| | |_:-'   .'
+      \`-._   \`\`\`\`    _.-'
+          \`\`-------''`,
+
+` /^ ^\\
+/ 0 0 \\
+V\\ Y /V
+ / - \\
+ |    \\
+ || (__V`,
+
+`                             ___-------___
+                         _-~~             ~~-_
+                      _-~                    /~-_
+   /^\\__/^\\         /~  \\                   /    \\
+ /|  O|| O|        /      \\_______________/        \\
+| |___||__|      /       /                \\          \\
+|          \\    /      /                    \\          \\
+|   (_______) /______/                        \\_________ \\
+|         / /         \\                      /            \\
+ \\         \\^\\\\         \\                  /               \\     /
+   \\         ||           \\______________/      _-_       //\\__//
+     \\       ||------_-~~-_ ------------- \\ --/~   ~\\    || __/
+       ~-----||====/~     |==================|       |/~~~~~
+        (_(__/  ./     /                    \\_\\      \\.
+               (_(___/                         \\_____)_)`
+  ];
+
+  const FIGLET_FONTS = [
+    'Standard', 'Big', 'Slant', 'Doom', 'Small', 'Banner',
+    'Block', 'Digital', 'Lean', 'Mini', 'Script', 'Shadow', 'Speed'
+  ];
+  const FIGLET_PHRASES = [
+    'Chance', 'Take A Chance', 'Hello', 'Welcome', 'Blue Team', 'Chance Gammill', 'Hack the Planet'
+  ];
+
+  function printArtLines(lines) {
+    lines.forEach(line => print(line, 'info'));
+  }
+
+  function loadFigletArt() {
+    return new Promise((resolve) => {
+      if (typeof figlet === 'undefined') {
+        resolve(null);
+        return;
+      }
+      const font = FIGLET_FONTS[Math.floor(Math.random() * FIGLET_FONTS.length)];
+      const text = FIGLET_PHRASES[Math.floor(Math.random() * FIGLET_PHRASES.length)];
+      figlet.defaults({ fontPath: 'https://cdn.jsdelivr.net/npm/figlet@1.7.0/fonts' });
+      figlet.text(text, { font }, (err, data) => {
+        if (err || !data) {
+          resolve(null);
+          return;
+        }
+        const lines = data.split('\n');
+        while (lines.length && !lines[0].trim()) lines.shift();
+        while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+        resolve(lines.length ? lines : null);
+      });
+    });
+  }
+
+  async function loadBannerArt() {
+    // 50/50: static picture or figlet phrase
+    if (Math.random() < 0.5) {
+      const art = pictureArts[Math.floor(Math.random() * pictureArts.length)];
+      return art.split('\n');
     }
+    const fig = await loadFigletArt();
+    if (fig) return fig;
+    const art = pictureArts[Math.floor(Math.random() * pictureArts.length)];
+    return art.split('\n');
   }
 
   // Boot
@@ -584,12 +677,8 @@ document.addEventListener('DOMContentLoaded', () => {
       printHTML('Hello, I am <span style="color:#3B6EA5">Chance Gammill</span>. Welcome to my site.');
       print('Feel free to look around or type \'help\' if you need a list of available commands.');
       print('');
-      const lines = await loadRandomAsciiArt();
-      if (lines && lines.length) {
-        lines.forEach(line => print(line, 'info'));
-      } else {
-        print('  [ascii art unavailable — check network]', 'muted');
-      }
+      const lines = await loadBannerArt();
+      if (lines) printArtLines(lines);
       print('');
       input.disabled = false;
       input.focus();
