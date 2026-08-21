@@ -551,91 +551,60 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.addEventListener('click', () => input.focus());
 
-  // Friendly ASCII arts
-  const arts = [
-`           ,-.
-          .:\` \`-.
-          |:|  __ b
-           \`;-(
-          ,'  |
-         ( \\|||_
-  ,-----(.-''--\`\`-------.
- /_______\`'______________\\
-/                          \\`,
-
-`    ___
-   //_\\\\_
- ."\\\\    ".
-/          \\
-|           \\_
-|         ,--.-.)
- \\       /  o \\o\\
- /\\/\\   \\    /_/
-  (_.   \`--'  __)
-   |     .-'  \\
-   |  .-'.     )
-   | (  _/--.-'
-   |  \`.___.'
-         (`,
-
-`           __..--''\`\`---....___   _..._    __
- /// //_.-'    .-/";  \`        \`\`<._  \`\`.''_ \`. / // /
-///_.-' _..--.'_    \\                    \`( ) ) // //
-/ (_..-' // (< _     ;_..__               ; \`' / ///
- / // // //  \`-._,_)' // / \`\`--...____..-' /// / //`,
-
-`            .'\\   /\`.
-         .'.-.\`-'.-.\`.
-    ..._:   .-. .-.   :_...
-  .'    '-.(o ) (o ).-'    \`.
- :  _    _ _\`~(_)~\`_ _    _  :
-:  /:   ' .-=_   _=-. \`   ;\\  :
-:   :|-.._  '     \`  _..-|:   :
- :   \`:| |\`:-:-.-:-:'| |:'   :
-  \`.   \`.| | | | | | |.'   .'
-    \`.   \`-:_| | |_:-'   .'
-      \`-._   \`\`\`\`    _.-'
-          \`\`-------''`,
-
-` /^ ^\\
-/ 0 0 \\
-V\\ Y /V
- / - \\
- |    \\
- || (__V`,
-
-`                             ___-------___
-                         _-~~             ~~-_
-                      _-~                    /~-_
-   /^\\__/^\\         /~  \\                   /    \\
- /|  O|| O|        /      \\_______________/        \\
-| |___||__|      /       /                \\          \\
-|          \\    /      /                    \\          \\
-|   (_______) /______/                        \\_________ \\
-|         / /         \\                      /            \\
- \\         \\^\\\\         \\                  /               \\     /
-   \\         ||           \\______________/      _-_       //\\__//
-     \\       ||------_-~~-_ ------------- \\ --/~   ~\\    || __/
-       ~-----||====/~     |==================|       |/~~~~~
-        (_(__/  ./     /                    \\_\\      \\.
-               (_(___/                         \\_____)_)`
+  // Dynamic ASCII via figlet.js (CDN)
+  const FIGLET_FONTS = [
+    'Standard', 'Big', 'Slant', 'Doom', 'Small', 'Banner',
+    'Block', 'Bubble', 'Digital', 'Ivrit', 'Lean', 'Mini',
+    'Script', 'Shadow', 'Speed', 'Term'
   ];
 
+  function showWelcome(artLines) {
+    print('');
+    printHTML('Hello, I am <span style="color:#3B6EA5">Chance Gammill</span>. Welcome to my site.');
+    print('Feel free to look around or type \'help\' if you need a list of available commands.');
+    print('');
+    artLines.forEach(line => print(line, 'info'));
+    print('');
+    input.disabled = false;
+    input.focus();
+  }
+
+  function bootWithFiglet() {
+    const fonts = FIGLET_FONTS;
+    const font = fonts[Math.floor(Math.random() * fonts.length)];
+    const phrases = ['Chance', 'Take A Chance', 'Gammill', 'hello'];
+    const text = phrases[Math.floor(Math.random() * phrases.length)];
+
+    const fallback = [
+      '  (figlet unavailable — using fallback)',
+      '   > takeachance.info'
+    ];
+
+    if (typeof figlet === 'undefined') {
+      showWelcome(fallback);
+      return;
+    }
+
+    // Load font from CDN, then render
+    figlet.defaults({ fontPath: 'https://cdn.jsdelivr.net/npm/figlet@1.7.0/fonts' });
+    figlet.text(text, { font: font }, (err, data) => {
+      if (err || !data) {
+        showWelcome(fallback);
+        return;
+      }
+      const lines = data.split('\n').filter((l, i, arr) => l.trim() || (i > 0 && i < arr.length - 1));
+      showWelcome(lines.length ? lines : fallback);
+    });
+  }
+
+  // Boot
   // Boot
   input.disabled = true;
   print('Initializing session...');
   setTimeout(() => {
     print('Loading profile...');
     setTimeout(() => {
-      print('');
-      printHTML('Hello, I am <span style="color:#3B6EA5">Chance Gammill</span>. Welcome to my site.');
-      print('Feel free to look around or type \'help\' if you need a list of available commands.');
-      print('');
-      const art = arts[Math.floor(Math.random() * arts.length)];
-      art.split('\n').forEach(line => print(line, 'info'));
-      print('');
-      input.disabled = false;
-      input.focus();
+      bootWithFiglet();
     }, 250);
   }, 250);
 });
