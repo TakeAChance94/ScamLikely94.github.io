@@ -551,60 +551,69 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.addEventListener('click', () => input.focus());
 
-  // Dynamic ASCII via figlet.js (CDN)
-  const FIGLET_FONTS = [
-    'Standard', 'Big', 'Slant', 'Doom', 'Small', 'Banner',
-    'Block', 'Bubble', 'Digital', 'Ivrit', 'Lean', 'Mini',
-    'Script', 'Shadow', 'Speed', 'Term'
-  ];
-
-  function showWelcome(artLines) {
-    print('');
-    printHTML('Hello, I am <span style="color:#3B6EA5">Chance Gammill</span>. Welcome to my site.');
-    print('Feel free to look around or type \'help\' if you need a list of available commands.');
-    print('');
-    artLines.forEach(line => print(line, 'info'));
-    print('');
-    input.disabled = false;
-    input.focus();
+  // Random photo → ASCII (new image every load)
+  function imageToAscii(img, cols) {
+    const w = cols;
+    const h = Math.max(8, Math.round(cols * (img.height / img.width) * 0.45));
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, w, h);
+    const data = ctx.getImageData(0, 0, w, h).data;
+    const ramp = ' .:-=+*#%@';
+    const lines = [];
+    for (let y = 0; y < h; y++) {
+      let row = '';
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        const lum = (0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]) / 255;
+        row += ramp[Math.min(ramp.length - 1, Math.floor(lum * ramp.length))];
+      }
+      lines.push(row);
+    }
+    return lines;
   }
 
-  function bootWithFiglet() {
-    const fonts = FIGLET_FONTS;
-    const font = fonts[Math.floor(Math.random() * fonts.length)];
-    const phrases = ['Chance', 'Take A Chance', 'Gammill', 'hello'];
-    const text = phrases[Math.floor(Math.random() * phrases.length)];
-
-    const fallback = [
-      '  (figlet unavailable — using fallback)',
-      '   > takeachance.info'
-    ];
-
-    if (typeof figlet === 'undefined') {
-      showWelcome(fallback);
-      return;
-    }
-
-    // Load font from CDN, then render
-    figlet.defaults({ fontPath: 'https://cdn.jsdelivr.net/npm/figlet@1.7.0/fonts' });
-    figlet.text(text, { font: font }, (err, data) => {
-      if (err || !data) {
-        showWelcome(fallback);
-        return;
-      }
-      const lines = data.split('\n').filter((l, i, arr) => l.trim() || (i > 0 && i < arr.length - 1));
-      showWelcome(lines.length ? lines : fallback);
+  function loadRandomAsciiArt() {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      const seed = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      // Lorem Picsum — random photo each request
+      img.src = 'https://picsum.photos/seed/' + seed + '/120/70';
+      img.onload = () => {
+        try {
+          resolve(imageToAscii(img, 56));
+        } catch (e) {
+          resolve(null);
+        }
+      };
+      img.onerror = () => resolve(null);
+      // timeout fallback
+      setTimeout(() => resolve(null), 4000);
     });
   }
 
-  // Boot
   // Boot
   input.disabled = true;
   print('Initializing session...');
   setTimeout(() => {
     print('Loading profile...');
-    setTimeout(() => {
-      bootWithFiglet();
+    setTimeout(async () => {
+      print('');
+      printHTML('Hello, I am <span style="color:#3B6EA5">Chance Gammill</span>. Welcome to my site.');
+      print('Feel free to look around or type \'help\' if you need a list of available commands.');
+      print('');
+      const lines = await loadRandomAsciiArt();
+      if (lines && lines.length) {
+        lines.forEach(line => print(line, 'info'));
+      } else {
+        print('  [ascii art unavailable]', 'muted');
+      }
+      print('');
+      input.disabled = false;
+      input.focus();
     }, 250);
   }, 250);
 });
