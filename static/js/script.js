@@ -551,48 +551,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.addEventListener('click', () => input.focus());
 
-  // Random photo → ASCII (new image every load)
-  function imageToAscii(img, cols) {
-    const w = cols;
-    const h = Math.max(8, Math.round(cols * (img.height / img.width) * 0.45));
-    const canvas = document.createElement('canvas');
-    canvas.width = w;
-    canvas.height = h;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0, w, h);
-    const data = ctx.getImageData(0, 0, w, h).data;
-    const ramp = ' .:-=+*#%@';
-    const lines = [];
-    for (let y = 0; y < h; y++) {
-      let row = '';
-      for (let x = 0; x < w; x++) {
-        const i = (y * w + x) * 4;
-        const lum = (0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]) / 255;
-        row += ramp[Math.min(ramp.length - 1, Math.floor(lum * ramp.length))];
-      }
-      lines.push(row);
-    }
-    return lines;
-  }
+  // Established ASCII art library (asciiart.eu DB via jsDelivr) — random piece each load
+  const ASCII_DB_URL = 'https://cdn.jsdelivr.net/gh/asweigart/asciiartjsondb@main/asciiartdb-asciiarteu.json';
 
-  function loadRandomAsciiArt() {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      const seed = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-      // Lorem Picsum — random photo each request
-      img.src = 'https://picsum.photos/seed/' + seed + '/120/70';
-      img.onload = () => {
-        try {
-          resolve(imageToAscii(img, 56));
-        } catch (e) {
-          resolve(null);
-        }
-      };
-      img.onerror = () => resolve(null);
-      // timeout fallback
-      setTimeout(() => resolve(null), 4000);
-    });
+  async function loadRandomAsciiArt() {
+    try {
+      const res = await fetch(ASCII_DB_URL);
+      if (!res.ok) throw new Error('fetch failed');
+      const db = await res.json();
+      // Prefer multi-line "pictures" that fit a terminal
+      const pics = db.filter(e =>
+        e && typeof e.art === 'string' &&
+        e.height >= 5 && e.height <= 22 &&
+        e.width >= 10 && e.width <= 72
+      );
+      const pool = pics.length ? pics : db.filter(e => e && e.art);
+      if (!pool.length) return null;
+      const pick = pool[Math.floor(Math.random() * pool.length)];
+      return pick.art.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+    } catch (e) {
+      return null;
+    }
   }
 
   // Boot
@@ -609,7 +588,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (lines && lines.length) {
         lines.forEach(line => print(line, 'info'));
       } else {
-        print('  [ascii art unavailable]', 'muted');
+        print('  [ascii art unavailable — check network]', 'muted');
       }
       print('');
       input.disabled = false;
